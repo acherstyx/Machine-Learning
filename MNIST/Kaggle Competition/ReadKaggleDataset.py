@@ -2,6 +2,7 @@ import numpy as np
 import os
 import random
 import pandas
+import csv
 
 #数据集封装
 class MNIST_Dataset:
@@ -12,13 +13,13 @@ class MNIST_Dataset:
         train_file=os.path.join(root,"train.csv")
         image=pandas.read_csv(train_file,skiprows=1,delimiter=',',usecols=list(range(28*28+1)[1:])).values
         label=np.reshape(pandas.read_csv(train_file,skiprows=1,delimiter=',',usecols=(0,),dtype=int).values,[-1])
-        seed=random.randint(0,10000)
-        np.random.seed(seed)
-        np.random.shuffle(image)
-        np.random.seed(seed)
-        np.random.shuffle(label)       
         self.train["image"]=image[:40000]
         self.train["label"]=label[:40000]
+        seed=random.randint(0,10000)
+        np.random.seed(seed)
+        np.random.shuffle(self.train["image"])
+        np.random.seed(seed)
+        np.random.shuffle(self.train["label"])
         self.test["image"]=image[40000:]
         self.test["label"]=label[40000:]
     def show_image(self,indexs=(0,)):
@@ -46,10 +47,16 @@ class MNIST_Dataset:
             self.test["label"][start:BATCH_SIZE]]
         return out
 
+def exam_data(rootpath):
+    filepath=os.path.join(rootpath,'./test.csv')
+    with open(filepath) as datafile:
+        for row in list(csv.reader(datafile,delimiter=','))[1:]:
+            yield [float (x) for x in row]
+
 if __name__=="__main__":
     ROOTPATH='./.dataset/'
     a=MNIST_Dataset(ROOTPATH)
-    a.show_image(range(5))
+    a.show_image([random.randrange(0,40000) for i in range(10)])
     image,label=a.nextbatch()
     print(image)
     print(label)

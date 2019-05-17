@@ -3,8 +3,9 @@ import time
 import matplotlib.pyplot as plt
 import numpy as np
 import math
+import random
 
-def CNN_Interface(data,Layers,lineshape=True,bias=True,order=0,const_init=0.0,active_function=tf.nn.relu,output_each_layer=False):
+def CNN_Interface(data,Layers,lineshape=True,order=0,const_init=0.0,active_function=tf.nn.relu,output_each_layer=False):
     '''
     传入初始的数据，以及按格式创建的各个层的参数，就可以完成卷积层和池化层的创建
     Layers示例:
@@ -134,6 +135,25 @@ def Softmax_Cross_Entropy_With_Regularization(label,logits,regularization_rate=0
                 for weight in tf.get_collection(collection):
                     regu+=regularizer(weight)
         return regu+cross_entropy,cross_entropy,regu
+
+def Calc_Accuratcy(y,y_,one_hot=True):
+    with tf.variable_scope("Net.Accuracy"):
+        if one_hot==True:
+            crrect_prediction=tf.equal(tf.argmax(y,1),tf.argmax(y_,1))
+        else:
+            crrect_prediction=tf.equal(tf.argmax(y,1),y_)
+        return tf.reduce_mean(tf.cast(crrect_prediction,tf.float64))
+
+def Sample_Output(y,y_,amount=1,argmax=True,one_hot=True):
+    with tf.variable_scope("Net.SampleOutput"):
+        if argmax==True:
+            if one_hot==True:
+                return tf.argmax(y[:amount],1),tf.argmax(y_[:amount],1)
+            else:
+                return tf.argmax(y[:amount],1),y_[:amount]
+        else:
+            return y[:amount],y_[:amount]
+
 
 def Info_Printer(learning_rate_base=None,learning_rate_decay_rate=None,learning_rate_decay_step=None,regularization_rate=None,keep_prob_layer=None,keep_prob_image=None):
     if learning_rate_base!=None:

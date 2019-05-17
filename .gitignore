@@ -2,7 +2,11 @@
 
 .vs/
 .dataset/
+.his/
+.model/
+*.csv
 
+.vscode/
 #==========================================================================
 
 # Byte-compiled / optimized / DLL files
