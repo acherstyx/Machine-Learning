@@ -1,7 +1,8 @@
-'''
-将数据文件预处理成只包含文件名和人数的形式，删去其余数据，来加快读取
-'''
+
 def pick_number(file_to_read,file_to_write):
+    '''
+    将数据文件预处理成只包含文件名和人数的形式，删去其余数据，来加快读取
+    '''
     writer=open(file_to_write,"w")
     with open(file_to_read,"r") as file:
         while True:
