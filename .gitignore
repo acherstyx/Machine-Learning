@@ -6,7 +6,12 @@
 .model/
 *.csv
 
+# vscode settings
 .vscode/
+
+# pycharm settings
+.idea/
+
 #==========================================================================
 
 # Byte-compiled / optimized / DLL files
