@@ -9,8 +9,8 @@ import Tools as tool
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
 LEARNING_RATE_BASE = 0.001
-LEARNING_RATE_DECAY_STEP = 100
-LEARNING_RATE_DECAY_RATE = 1.0
+LEARNING_RATE_DECAY_STEP = 1000
+LEARNING_RATE_DECAY_RATE = 0.99
 REGULARIZATION_RATE = 1e-5
 
 
@@ -262,8 +262,15 @@ with tf.variable_scope("Train_model"):
 
 with tf.variable_scope("Analyze_and_save"):
     saver = tf.train.Saver()
+    # tensorboard image
+    tf.summary.image("Image", image[:, :, :, :3], max_outputs=1)
+    # histogram filter
+    histogram_filter = [layer1_filter,layer2_filter,layer3_filter,layer4_filter,layer5_filter,
+                        layer6_filter,layer7_filter,layer8_filter,layer9_filter,layer10_filter,
+                        layer11_filter,layer12_filter,layer13_filter,layer14_filter,layer15_filter]
     for i in range(15):
-        tf.summary.image("Layer{ord}_active".format(ord=i + 1), hidden_layer[i][:, :, :, :1], max_outputs=1)
+        tf.summary.image("Layer image/Layer{ord}".format(ord=i + 1), hidden_layer[i][:, :, :, :3], max_outputs=1)
+        tf.summary.histogram("filter/conv{layer_order}_filter".format(layer_order=i), histogram_filter[i])
 
 with tf.variable_scope("Accuracy"):
     prediction = tf.cast(tf.argmax(fc_layer2_active, axis=1), tf.int32, name="Prediction")
@@ -272,14 +279,14 @@ with tf.variable_scope("Accuracy"):
     summary_accuracy = tf.summary.scalar("Accuracy_on_test", accuracy_for_log)
 
 # load data set
-print("Loading data set ... ", end='')
+print(">>> Loading data set ... ", end='')
 train_data_loader, test_data_loader = tool.Create_dataloader(path=DATASET_DIR_PATH,
-                                                             train_batch_size=16,
+                                                             train_batch_size=4,
                                                              test_batch_size=100)
 # get train sample
 train_data_loader2, test_data_loader2 = tool.Create_dataloader(path=DATASET_DIR_PATH,
-                                                               train_batch_size=100,
-                                                               test_batch_size=100)
+                                                               train_batch_size=2000,
+                                                               test_batch_size=2000)
 for train_data_image, train_data_label in train_data_loader2:
     train_feed_dict_sample = {image: train_data_image.asnumpy(), label_: train_data_label.asnumpy()}
     break
@@ -288,7 +295,7 @@ for test_data_image, test_data_label in test_data_loader2:
     break
 print("Finished")
 
-print("Nodes of cnn output layer: ", line_nodes)
+print(">>> Nodes of cnn output layer: ", line_nodes)
 
 # timer init
 timer = tool.TrainTimer()
@@ -296,12 +303,15 @@ timer = tool.TrainTimer()
 with tf.Session() as sess:
     # initialize
     sess.run(tf.global_variables_initializer())
+    reply_load = input('>>> Load model?(y/n): ')
+    if reply_load == 'y':
+        saver.restore(sess,'./.save/model.ckpt')
     # summary
     summaries = tf.summary.merge_all()
     # write graph
     writer = tf.summary.FileWriter("./.log/", tf.get_default_graph())
 
-    TRAIN_BATCH = 10
+    TRAIN_BATCH = 2
     counter = 0
     timer.reset()
     for i in range(TRAIN_BATCH):
@@ -312,13 +322,16 @@ with tf.Session() as sess:
         print("Cross entropy: {ce:.4f} Regularization: {reg:.4f}".format(
             ce=sess.run(cross_entropy, feed_dict=train_feed_dict_sample),
             reg=sess.run(regularization, feed_dict=train_feed_dict_sample)))
-        print("Accuracy on train: {acc:.2f} Accuracy on test: {acc_test:.2f}".format(
-            acc=sess.run(accuracy, feed_dict=train_feed_dict_sample),
-            acc_test=sess.run(accuracy, feed_dict=test_feed_dict_sample)))
+        print("Accuracy on train: {acc:.2f}% Accuracy on test: {acc_test:.2f}%".format(
+            acc=sess.run(accuracy, feed_dict=train_feed_dict_sample) * 100,
+            acc_test=sess.run(accuracy, feed_dict=test_feed_dict_sample) * 100))
         # write summary
         writer.add_summary(sess.run(summaries, feed_dict=test_feed_dict_sample), global_step=i)
+        # train model
         for train_data_image, train_data_label in train_data_loader:
             # generate feed dict
             train_feed_dict = {image: train_data_image.asnumpy(), label_: train_data_label.asnumpy(), rate: 0.4}
             # run
             sess.run(train_step, feed_dict=train_feed_dict)
+    # save model
+    saver.save(sess, './.save/model.ckpt')
