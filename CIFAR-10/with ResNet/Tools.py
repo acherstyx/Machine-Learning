@@ -5,8 +5,39 @@ from six.moves import cPickle as pickle
 from mxnet.gluon import data as gdata
 import numpy as np
 import mxnet.ndarray as nd
-
+import mxnet as mx
 import time
+import matplotlib.pyplot as plt
+import cv2.cv2 as cv
+import random
+
+
+# crop image
+def data_augmentation(image_list, size_cut):
+    image_out = []
+    # crop
+    RandomCrop = mx.image.RandomCropAug(size=size_cut)
+    # resize to init
+    Resize = mx.image.ForceResizeAug(size=(32, 32))
+    # mirror
+    HMirror = mx.image.HorizontalFlipAug(p=0.3)
+    # bright
+    Brightness = mx.image.BrightnessJitterAug(brightness=random.random() * 0.5)
+    # contrast
+    Contrast = mx.image.ContrastJitterAug(contrast=random.random() * 0.5)
+    # saturation
+    Saturation = mx.image.SaturationJitterAug(saturation=random.random() * 0.5)
+    for image in image_list:
+        image_out.append(
+            Resize(
+                HMirror(
+                    Brightness(
+                        Contrast(
+                            Saturation(
+                                RandomCrop(
+                                    nd.array(
+                                        image))))))).asnumpy())
+    return nd.array(image_out)
 
 
 class CIFAR10:
@@ -58,7 +89,7 @@ class CIFAR10:
             self.Test_Size = 10000
 
 
-def Create_dataloader(path, train_batch_size, test_batch_size, shuffle=True):
+def Create_dataloader(path, train_batch_size, test_batch_size, shuffle=True, dataAug=True):
     data_set = CIFAR10(path)
     transform = lambda data, label: (data.astype(np.float32) / 255, label)
     # test data loader
@@ -67,7 +98,10 @@ def Create_dataloader(path, train_batch_size, test_batch_size, shuffle=True):
                                    test_batch_size,
                                    shuffle=shuffle)
     # train data loader
-    train_data_set = gdata.ArrayDataset(nd.array(data_set.Train["image"]), nd.array(data_set.Train["label"]))
+    if dataAug:
+        dataAug_data_set = data_augmentation(nd.array(data_set.Train["image"]), (24, 24))
+    train_data_set = gdata.ArrayDataset(nd.concat(nd.array(data_set.Train["image"]),dataAug_data_set,dim=0),
+                                        nd.concat(nd.array(data_set.Train["label"]),nd.array(data_set.Train["label"]),dim=0))
     train_loader = gdata.DataLoader(train_data_set.transform(transform),
                                     train_batch_size,
                                     shuffle=shuffle)
@@ -107,24 +141,33 @@ class TrainTimer:
 
 
 if __name__ == "__main__":
-    train, test = Create_dataloader("./.dataset",2,100)
+    train, test = Create_dataloader("./.dataset", 2, 100)
     for x, y in train:
         print(x, y)
         break
 
-    print("Batch shape: ",end="")
+    print("Batch shape: ", end="")
     for x, y in train:
         print(x.shape)
         break
 
-    print("Test timer ... ",end="")
+    print("Test timer ... ", end="")
     timer = TrainTimer()
     timer.start()
-    time.sleep(2)
+    time.sleep(0.1)
     print(timer.read())
 
-    print("Testing data load speed: ", end="")
-    timer.reset()
-    for x, y in train:
-        feeddict=[x.asnumpy(),y.asnumpy()]
-    print(timer.read())
+    #    print("Testing data load speed: ", end="")
+    #    timer.reset()
+    #    for x, y in train:
+    #        feeddict=[x.asnumpy(),y.asnumpy()]
+    #    print(timer.read())
+
+    print("Test image crop")
+    cifar10 = CIFAR10("./.dataset/")
+    plt.imshow(np.int8(cifar10.Train["image"][0]))
+    plt.pause(2)
+#    plt.imshow(np.int8(data_augmentation([cifar10.Train["image"][0]], (24, 24))[0]))
+#    plt.pause(2)
+
+

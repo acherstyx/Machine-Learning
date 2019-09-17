@@ -311,7 +311,7 @@ with tf.Session() as sess:
     # write graph
     writer = tf.summary.FileWriter("./.log/", tf.get_default_graph())
 
-    TRAIN_BATCH = 2
+    TRAIN_BATCH = 20
     counter = 0
     timer.reset()
     for i in range(TRAIN_BATCH):
