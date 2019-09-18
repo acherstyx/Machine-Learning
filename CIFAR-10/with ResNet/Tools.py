@@ -5,8 +5,33 @@ from six.moves import cPickle as pickle
 from mxnet.gluon import data as gdata
 import numpy as np
 import mxnet.ndarray as nd
-
+import mxnet as mx
 import time
+import matplotlib.pyplot as plt
+import cv2.cv2 as cv
+import random
+
+
+# crop image
+def data_augmentation(image_list, size_cut):
+    image_out = []
+    for image in image_list:
+        augmenter = mx.image.CreateAugmenter(data_shape=(3, 32, 32),
+                                             rand_crop=True,
+                                             rand_resize=random.randint(28, 32),
+                                             rand_gray=random.random() * 0.2,
+                                             rand_mirror=True,
+                                             brightness=random.random() * 0.5,
+                                             contrast=random.random() * 0.8,
+                                             saturation=random.random() * 0.4,
+                                             pca_noise=random.random() * 1.0
+                                             )
+        temp = nd.array(image)
+        for aug in augmenter:
+            temp = aug(temp)
+        temp.transpose((2, 0, 1))
+        image_out.append(temp.asnumpy())
+    return nd.array(image_out)
 
 
 class CIFAR10:
@@ -58,7 +83,7 @@ class CIFAR10:
             self.Test_Size = 10000
 
 
-def Create_dataloader(path, train_batch_size, test_batch_size, shuffle=True):
+def Create_dataloader(path, train_batch_size, test_batch_size, shuffle=True, dataAug=True):
     data_set = CIFAR10(path)
     transform = lambda data, label: (data.astype(np.float32) / 255, label)
     # test data loader
@@ -67,7 +92,15 @@ def Create_dataloader(path, train_batch_size, test_batch_size, shuffle=True):
                                    test_batch_size,
                                    shuffle=shuffle)
     # train data loader
-    train_data_set = gdata.ArrayDataset(nd.array(data_set.Train["image"]), nd.array(data_set.Train["label"]))
+    if dataAug:
+        dataAug_data_set = data_augmentation(nd.array(data_set.Train["image"]), (24, 24))
+        train_data_set = gdata.ArrayDataset(nd.concat(nd.array(data_set.Train["image"]), dataAug_data_set,
+                                                      dim=0),
+                                            nd.concat(nd.array(data_set.Train["label"]),
+                                                      nd.array(data_set.Train["label"]),
+                                                      dim=0))
+    else:
+        train_data_set = gdata.ArrayDataset(nd.array(data_set.Train["image"]), nd.array(data_set.Train["label"]))
     train_loader = gdata.DataLoader(train_data_set.transform(transform),
                                     train_batch_size,
                                     shuffle=shuffle)
@@ -107,24 +140,40 @@ class TrainTimer:
 
 
 if __name__ == "__main__":
-    train, test = Create_dataloader("./.dataset",2,100)
-    for x, y in train:
-        print(x, y)
-        break
+    #    train, test = Create_dataloader("./.dataset", 2, 100)
+    #    for x, y in train:
+    #        print(x, y)
+    #        break
 
-    print("Batch shape: ",end="")
-    for x, y in train:
-        print(x.shape)
-        break
+    #    print("Batch shape: ", end="")
+    #    for x, y in train:
+    #        print(x.shape)
+    #        break
 
-    print("Test timer ... ",end="")
+    print("Test timer ... ", end="")
     timer = TrainTimer()
     timer.start()
-    time.sleep(2)
+    time.sleep(0.1)
     print(timer.read())
 
-    print("Testing data load speed: ", end="")
-    timer.reset()
-    for x, y in train:
-        feeddict=[x.asnumpy(),y.asnumpy()]
-    print(timer.read())
+    #    print("Testing data load speed: ", end="")
+    #    timer.reset()
+    #    for x, y in train:
+    #        feeddict=[x.asnumpy(),y.asnumpy()]
+    #    print(timer.read())
+
+    print("Test image augmentation")
+    cifar10 = CIFAR10("./.dataset/")
+
+    image_init = cifar10.Train["image"][1400]
+    auged = data_augmentation([image_init, ], (24, 24))
+
+    image_init = np.float32(image_init)
+    image_init = image_init / np.max(image_init)
+    image_out = auged[0].asnumpy()
+    image_out = image_out / np.max(image_out)
+
+    plt.imshow(image_init)
+    plt.pause(2)
+    plt.imshow(image_out)
+    plt.pause(2)
