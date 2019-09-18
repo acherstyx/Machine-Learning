@@ -341,24 +341,6 @@ with tf.variable_scope("Accuracy"):
     summary_accuracy_test = tf.summary.scalar("Accuracy_test", accuracy)
     summary_accuracy_train = tf.summary.scalar("Accuracy_train", accuracy)
 
-
-# load data set
-print(">>> Loading data set ... ", end='')
-train_data_loader, test_data_loader = tool.Create_dataloader(path=DATASET_DIR_PATH,
-                                                             train_batch_size=4,
-                                                             test_batch_size=100)
-# get train sample
-train_data_loader2, test_data_loader2 = tool.Create_dataloader(path=DATASET_DIR_PATH,
-                                                               train_batch_size=2000,
-                                                               test_batch_size=2000)
-for train_data_image, train_data_label in train_data_loader2:
-    train_feed_dict_sample = {image: train_data_image.asnumpy(), label_: train_data_label.asnumpy()}
-    break
-for test_data_image, test_data_label in test_data_loader2:
-    test_feed_dict_sample = {image: test_data_image.asnumpy(), label_: test_data_label.asnumpy()}
-    break
-print("Finished")
-
 print(">>> Nodes of cnn output layer: ", line_nodes)
 
 # timer init
@@ -370,6 +352,25 @@ with tf.Session() as sess:
     reply_load = input('>>> Load model?(y/n): ')
     if reply_load == 'y':
         saver.restore(sess, './.save/model.ckpt')
+    # load data set
+    print(">>> Loading data set ... ", end='')
+    timer.reset()
+    train_data_loader, test_data_loader = tool.Create_dataloader(path=DATASET_DIR_PATH,
+                                                                 train_batch_size=4,
+                                                                 test_batch_size=100)
+    # get train sample
+    train_data_loader2, test_data_loader2 = tool.Create_dataloader(path=DATASET_DIR_PATH,
+                                                                   train_batch_size=2000,
+                                                                   test_batch_size=2000,
+                                                                   shuffle=False,
+                                                                   dataAug=False)
+    for train_data_image, train_data_label in train_data_loader2:
+        train_feed_dict_sample = {image: train_data_image.asnumpy(), label_: train_data_label.asnumpy()}
+        break
+    for test_data_image, test_data_label in test_data_loader2:
+        test_feed_dict_sample = {image: test_data_image.asnumpy(), label_: test_data_label.asnumpy()}
+        break
+    print("Finished ", timer.read())
     # summary
     merge_summary_info = tf.summary.merge([tf.get_collection("summary_image"),
                                            tf.get_collection("summary_histogram")])
@@ -394,8 +395,8 @@ with tf.Session() as sess:
             acc_test=sess.run(accuracy, feed_dict=test_feed_dict_sample) * 100))
         # write summary
         writer.add_summary(sess.run(merge_summary_info, feed_dict=test_feed_dict_sample), global_step=i)
-        writer.add_summary(sess.run(merge_summary_accuracy_test,feed_dict=test_feed_dict_sample),global_step=i)
-        writer.add_summary(sess.run(merge_summary_accuracy_train,feed_dict=train_feed_dict_sample),global_step=i)
+        writer.add_summary(sess.run(merge_summary_accuracy_test, feed_dict=test_feed_dict_sample), global_step=i)
+        writer.add_summary(sess.run(merge_summary_accuracy_train, feed_dict=train_feed_dict_sample), global_step=i)
         # train model
         for train_data_image, train_data_label in train_data_loader:
             # generate feed dict
