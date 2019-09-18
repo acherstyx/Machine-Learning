@@ -14,32 +14,7 @@ import random
 
 # crop image
 def data_augmentation(image_list, size_cut):
-    #image_out = []
-    # crop
-    #RandomCrop = mx.image.RandomCropAug(size=size_cut)
-    # resize to init
-    #Resize = mx.image.ForceResizeAug(size=(32, 32))
-    # mirror
-    #HMirror = mx.image.HorizontalFlipAug(p=0.5)
-    # bright
-    #Brightness = mx.image.BrightnessJitterAug(brightness=random.random() * 1.0)
-    # contrast
-    #Contrast = mx.image.ContrastJitterAug(contrast=random.random() * 0.8)
-    # saturation
-    #Saturation = mx.image.SaturationJitterAug(saturation=random.random() * 0.45)
-    #for image in image_list:
-    #    image_out.append(
-    #        Resize(
-    #            HMirror(
-    #                Brightness(
-    #                    Contrast(
-    #                        Saturation(
-    #                            RandomCrop(
-    #                                nd.array(
-    #                                    image))))))).asnumpy())
-    #return nd.array(image_out)
     image_out = []
-
     for image in image_list:
         augmenter = mx.image.CreateAugmenter(data_shape=(3, 32, 32),
                                              rand_crop=True,
@@ -54,10 +29,10 @@ def data_augmentation(image_list, size_cut):
         temp = nd.array(image)
         for aug in augmenter:
             temp = aug(temp)
-        temp.transpose((2,0,1))
+        temp.transpose((2, 0, 1))
         image_out.append(temp.asnumpy())
-
     return nd.array(image_out)
+
 
 class CIFAR10:
     Train = {}
@@ -119,9 +94,13 @@ def Create_dataloader(path, train_batch_size, test_batch_size, shuffle=True, dat
     # train data loader
     if dataAug:
         dataAug_data_set = data_augmentation(nd.array(data_set.Train["image"]), (24, 24))
-    train_data_set = gdata.ArrayDataset(nd.concat(nd.array(data_set.Train["image"]), dataAug_data_set, dim=0),
-                                        nd.concat(nd.array(data_set.Train["label"]), nd.array(data_set.Train["label"]),
-                                                  dim=0))
+        train_data_set = gdata.ArrayDataset(nd.concat(nd.array(data_set.Train["image"]), dataAug_data_set,
+                                                      dim=0),
+                                            nd.concat(nd.array(data_set.Train["label"]),
+                                                      nd.array(data_set.Train["label"]),
+                                                      dim=0))
+    else:
+        train_data_set = gdata.ArrayDataset(nd.array(data_set.Train["image"]), nd.array(data_set.Train["label"]))
     train_loader = gdata.DataLoader(train_data_set.transform(transform),
                                     train_batch_size,
                                     shuffle=shuffle)
@@ -187,7 +166,7 @@ if __name__ == "__main__":
     cifar10 = CIFAR10("./.dataset/")
 
     image_init = cifar10.Train["image"][1400]
-    auged = data_augmentation([image_init,], (24, 24))
+    auged = data_augmentation([image_init, ], (24, 24))
 
     image_init = np.float32(image_init)
     image_init = image_init / np.max(image_init)
