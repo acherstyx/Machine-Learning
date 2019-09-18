@@ -278,23 +278,6 @@ with tf.variable_scope("Accuracy"):
     accuracy_for_log = tf.reduce_mean(tf.cast(tf.equal(prediction, label_), tf.float32), name="Accuracy_log")
     summary_accuracy = tf.summary.scalar("Accuracy_on_test", accuracy_for_log)
 
-# load data set
-print(">>> Loading data set ... ", end='')
-train_data_loader, test_data_loader = tool.Create_dataloader(path=DATASET_DIR_PATH,
-                                                             train_batch_size=4,
-                                                             test_batch_size=100)
-# get train sample
-train_data_loader2, test_data_loader2 = tool.Create_dataloader(path=DATASET_DIR_PATH,
-                                                               train_batch_size=2000,
-                                                               test_batch_size=2000)
-for train_data_image, train_data_label in train_data_loader2:
-    train_feed_dict_sample = {image: train_data_image.asnumpy(), label_: train_data_label.asnumpy()}
-    break
-for test_data_image, test_data_label in test_data_loader2:
-    test_feed_dict_sample = {image: test_data_image.asnumpy(), label_: test_data_label.asnumpy()}
-    break
-print("Finished")
-
 print(">>> Nodes of cnn output layer: ", line_nodes)
 
 # timer init
@@ -306,6 +289,25 @@ with tf.Session() as sess:
     reply_load = input('>>> Load model?(y/n): ')
     if reply_load == 'y':
         saver.restore(sess,'./.save/model.ckpt')
+    # load data set
+    print(">>> Loading data set ... ", end='')
+    timer.reset()
+    train_data_loader, test_data_loader = tool.Create_dataloader(path=DATASET_DIR_PATH,
+                                                                 train_batch_size=4,
+                                                                 test_batch_size=100)
+    # get train sample
+    train_data_loader2, test_data_loader2 = tool.Create_dataloader(path=DATASET_DIR_PATH,
+                                                                   train_batch_size=2000,
+                                                                   test_batch_size=2000,
+                                                                   shuffle=False,
+                                                                   dataAug=False)
+    for train_data_image, train_data_label in train_data_loader2:
+        train_feed_dict_sample = {image: train_data_image.asnumpy(), label_: train_data_label.asnumpy()}
+        break
+    for test_data_image, test_data_label in test_data_loader2:
+        test_feed_dict_sample = {image: test_data_image.asnumpy(), label_: test_data_label.asnumpy()}
+        break
+    print("Finished ",timer.read())
     # summary
     summaries = tf.summary.merge_all()
     # write graph
