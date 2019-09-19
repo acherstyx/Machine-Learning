@@ -8,10 +8,18 @@ import Tools as tool
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
+TRAIN_EPOCH = 20
+EPOCH_OFFSET = 0
 LEARNING_RATE_BASE = 0.001
-LEARNING_RATE_DECAY_STEP = 500
+LEARNING_RATE_DECAY_STEP = 5000
 LEARNING_RATE_DECAY_RATE = 0.99
 REGULARIZATION_RATE = 1e-3
+GRADE_LIMIT = 20
+DROPOUT_RATE = 0.2
+CHECK_FREQUENCY = 5000
+
+DATASET_DIR_PATH = "./.dataset"
+IMAGE_SHAPE = [32, 32, 3]
 
 
 def loss_on_test(data_loader):
@@ -22,9 +30,6 @@ def loss_on_test(data_loader):
         break
     return np.mean(test_loss)
 
-
-DATASET_DIR_PATH = "./.dataset"
-IMAGE_SHAPE = [32, 32, 3]
 
 with tf.variable_scope("Data_in"):
     image = tf.placeholder(tf.float32, shape=[None] + IMAGE_SHAPE, name="image")
@@ -98,10 +103,11 @@ with tf.variable_scope("ResNet"):
                                   filter=shortcut3_filter,
                                   strides=[1, 1, 1, 1],
                                   padding="SAME")
-    shortcut3_init = tf.nn.max_pool(shortcut3_temp,
+    shortcut3_pool = tf.nn.max_pool(shortcut3_temp,
                                     ksize=[1, 4, 4, 1],
                                     strides=[1, 2, 2, 1],
                                     padding="SAME")
+    shortcut3_init = tf.nn.dropout(shortcut3_pool,rate=DROPOUT_RATE)
 
     # layer 5 size:48->48
     layer5_filter = tf.get_variable(name="layer5_filter",
@@ -198,10 +204,11 @@ with tf.variable_scope("ResNet"):
                                   filter=shortcut6_filter,
                                   strides=[1, 1, 1, 1],
                                   padding="SAME")
-    shortcut6_init = tf.nn.avg_pool(shortcut6_temp,
+    shortcut6_pool = tf.nn.avg_pool(shortcut6_temp,
                                     ksize=[1, 4, 4, 1],
                                     strides=[1, 2, 2, 1],
                                     padding="SAME")
+    shortcut6_init = tf.nn.dropout(shortcut6_pool,rate=DROPOUT_RATE)
 
     # avg pool 4 2
     pool2 = tf.nn.avg_pool(layer10_active,
@@ -313,7 +320,11 @@ with tf.variable_scope("Train_model"):
     regularizer = tf.contrib.layers.l2_regularizer(REGULARIZATION_RATE)
     regularization = regularizer(fc_layer1_weight) + regularizer(fc_layer2_weight)
     loss = cross_entropy + regularization
-    train_step = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(loss=loss, global_step=global_step)
+    # optimize
+    optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate)
+    grads, variables = zip(*optimizer.compute_gradients(loss))
+    grads, global_norm = tf.clip_by_global_norm(grads, GRADE_LIMIT)
+    train_step = optimizer.apply_gradients(zip(grads, variables),global_step)
 
 with tf.variable_scope("Analyze_and_save"):
     saver = tf.train.Saver()
@@ -362,7 +373,7 @@ with tf.Session() as sess:
     train_data_loader2, test_data_loader2 = tool.Create_dataloader(path=DATASET_DIR_PATH,
                                                                    train_batch_size=2000,
                                                                    test_batch_size=2000,
-                                                                   shuffle=False,
+                                                                   shuffle=True,
                                                                    dataAug=False)
     for train_data_image, train_data_label in train_data_loader2:
         train_feed_dict_sample = {image: train_data_image.asnumpy(), label_: train_data_label.asnumpy()}
@@ -377,31 +388,34 @@ with tf.Session() as sess:
     merge_summary_accuracy_test = tf.summary.merge([summary_accuracy_test])
     merge_summary_accuracy_train = tf.summary.merge([summary_accuracy_train])
     # write graph
-    writer = tf.summary.FileWriter("./.log/", tf.get_default_graph())
+    writer = tf.summary.FileWriter("./.log/with ResNet", tf.get_default_graph())
 
-    TRAIN_BATCH = 20
     counter = 0
     timer.reset()
-    for i in range(TRAIN_BATCH):
-        print(">>> After {epoch} epoch: ".format(epoch=i))
-        print("Loss on train: {train_loss:.5f}, Loss on test: {test_loss:.5f}".format(
-            train_loss=sess.run(loss, feed_dict=train_feed_dict_sample),
-            test_loss=sess.run(loss, feed_dict=test_feed_dict_sample)))
-        print("Cross entropy: {ce:.4f} Regularization: {reg:.4f}".format(
-            ce=sess.run(cross_entropy, feed_dict=train_feed_dict_sample),
-            reg=sess.run(regularization, feed_dict=train_feed_dict_sample)))
-        print("Accuracy on train: {acc:.2f}% Accuracy on test: {acc_test:.2f}%".format(
-            acc=sess.run(accuracy, feed_dict=train_feed_dict_sample) * 100,
-            acc_test=sess.run(accuracy, feed_dict=test_feed_dict_sample) * 100))
+    for i in range(TRAIN_EPOCH):
+        # train model
+        i += EPOCH_OFFSET
+        for train_data_image, train_data_label in train_data_loader:
+            if counter % CHECK_FREQUENCY == 0:
+                print(">>> After {batch} batch: ".format(batch=counter))
+                print("Loss on train: {train_loss:.5f}, Loss on test: {test_loss:.5f}".format(
+                    train_loss=sess.run(loss, feed_dict=train_feed_dict_sample),
+                    test_loss=sess.run(loss, feed_dict=test_feed_dict_sample)))
+                print("Cross entropy: {ce:.4f} Regularization: {reg:.4f}".format(
+                    ce=sess.run(cross_entropy, feed_dict=train_feed_dict_sample),
+                    reg=sess.run(regularization, feed_dict=train_feed_dict_sample)))
+                print("Accuracy on train: {acc:.2f}% Accuracy on test: {acc_test:.2f}%".format(
+                    acc=sess.run(accuracy, feed_dict=train_feed_dict_sample) * 100,
+                    acc_test=sess.run(accuracy, feed_dict=test_feed_dict_sample) * 100))
+            counter += 1
+
+            # generate feed dict
+            train_feed_dict = {image: train_data_image.asnumpy(), label_: train_data_label.asnumpy(), rate: DROPOUT_RATE}
+            # run
+            sess.run(train_step, feed_dict=train_feed_dict)
         # write summary
         writer.add_summary(sess.run(merge_summary_info, feed_dict=test_feed_dict_sample), global_step=i)
         writer.add_summary(sess.run(merge_summary_accuracy_test, feed_dict=test_feed_dict_sample), global_step=i)
         writer.add_summary(sess.run(merge_summary_accuracy_train, feed_dict=train_feed_dict_sample), global_step=i)
-        # train model
-        for train_data_image, train_data_label in train_data_loader:
-            # generate feed dict
-            train_feed_dict = {image: train_data_image.asnumpy(), label_: train_data_label.asnumpy(), rate: 0.6}
-            # run
-            sess.run(train_step, feed_dict=train_feed_dict)
     # save model
     saver.save(sess, './.save/model.ckpt')

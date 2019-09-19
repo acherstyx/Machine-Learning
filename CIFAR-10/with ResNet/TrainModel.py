@@ -8,10 +8,12 @@ import Tools as tool
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
-LEARNING_RATE_BASE = 0.001
+LEARNING_RATE_BASE = 0.01
 LEARNING_RATE_DECAY_STEP = 1000
 LEARNING_RATE_DECAY_RATE = 0.99
-REGULARIZATION_RATE = 1e-5
+REGULARIZATION_RATE = 1e-4
+BATCH_SIZE = 2
+GRADE_LIMIT = 20
 
 
 def loss_on_test(data_loader):
@@ -258,7 +260,11 @@ with tf.variable_scope("Train_model"):
     regularizer = tf.contrib.layers.l2_regularizer(REGULARIZATION_RATE)
     regularization = regularizer(fc_layer1_weight) + regularizer(fc_layer2_weight)
     loss = cross_entropy + regularization
-    train_step = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(loss=loss, global_step=global_step)
+    # optimize
+    optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate)
+    grads, variables = zip(*optimizer.compute_gradients(loss))
+    grads, global_norm = tf.clip_by_global_norm(grads, GRADE_LIMIT)
+    train_step = optimizer.apply_gradients(zip(grads, variables),global_step)
 
 with tf.variable_scope("Analyze_and_save"):
     saver = tf.train.Saver()
@@ -293,7 +299,7 @@ with tf.Session() as sess:
     print(">>> Loading data set ... ", end='')
     timer.reset()
     train_data_loader, test_data_loader = tool.Create_dataloader(path=DATASET_DIR_PATH,
-                                                                 train_batch_size=4,
+                                                                 train_batch_size=BATCH_SIZE,
                                                                  test_batch_size=100)
     # get train sample
     train_data_loader2, test_data_loader2 = tool.Create_dataloader(path=DATASET_DIR_PATH,
@@ -311,7 +317,7 @@ with tf.Session() as sess:
     # summary
     summaries = tf.summary.merge_all()
     # write graph
-    writer = tf.summary.FileWriter("./.log/", tf.get_default_graph())
+    writer = tf.summary.FileWriter("./.log/without ResNet", tf.get_default_graph())
 
     TRAIN_BATCH = 20
     counter = 0
