@@ -5,6 +5,7 @@
 .his/
 .model/
 *.csv
+.save/
 
 # vscode settings
 .vscode/

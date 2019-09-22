@@ -9,14 +9,14 @@ import Tools as tool
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
 TRAIN_EPOCH = 20
-EPOCH_OFFSET = 0
+EPOCH_OFFSET = 20
 LEARNING_RATE_BASE = 0.001
-LEARNING_RATE_DECAY_STEP = 5000
+LEARNING_RATE_DECAY_STEP = 2500
 LEARNING_RATE_DECAY_RATE = 0.99
 REGULARIZATION_RATE = 1e-3
 GRADE_LIMIT = 20
-DROPOUT_RATE = 0.2
-CHECK_FREQUENCY = 5000
+DROPOUT_RATE = 0.3
+CHECK_FREQUENCY = 2500
 
 DATASET_DIR_PATH = "./.dataset"
 IMAGE_SHAPE = [32, 32, 3]
@@ -363,12 +363,14 @@ with tf.Session() as sess:
     reply_load = input('>>> Load model?(y/n): ')
     if reply_load == 'y':
         saver.restore(sess, './.save/model.ckpt')
+        print("Model restored.")
     # load data set
     print(">>> Loading data set ... ", end='')
     timer.reset()
     train_data_loader, test_data_loader = tool.Create_dataloader(path=DATASET_DIR_PATH,
                                                                  train_batch_size=4,
-                                                                 test_batch_size=100)
+                                                                 test_batch_size=100,
+                                                                 dataAug=True)
     # get train sample
     train_data_loader2, test_data_loader2 = tool.Create_dataloader(path=DATASET_DIR_PATH,
                                                                    train_batch_size=2000,
@@ -389,6 +391,8 @@ with tf.Session() as sess:
     merge_summary_accuracy_train = tf.summary.merge([summary_accuracy_train])
     # write graph
     writer = tf.summary.FileWriter("./.log/with ResNet", tf.get_default_graph())
+    writer_train = tf.summary.FileWriter("./.log/with ResNet/train")
+    writer_test = tf.summary.FileWriter("./.log/with ResNet/test")
 
     counter = 0
     timer.reset()
@@ -398,6 +402,7 @@ with tf.Session() as sess:
         for train_data_image, train_data_label in train_data_loader:
             if counter % CHECK_FREQUENCY == 0:
                 print(">>> After {batch} batch: ".format(batch=counter))
+                print("Learning rate: {lr}".format(lr=sess.run(learning_rate)))
                 print("Loss on train: {train_loss:.5f}, Loss on test: {test_loss:.5f}".format(
                     train_loss=sess.run(loss, feed_dict=train_feed_dict_sample),
                     test_loss=sess.run(loss, feed_dict=test_feed_dict_sample)))
@@ -415,7 +420,7 @@ with tf.Session() as sess:
             sess.run(train_step, feed_dict=train_feed_dict)
         # write summary
         writer.add_summary(sess.run(merge_summary_info, feed_dict=test_feed_dict_sample), global_step=i)
-        writer.add_summary(sess.run(merge_summary_accuracy_test, feed_dict=test_feed_dict_sample), global_step=i)
-        writer.add_summary(sess.run(merge_summary_accuracy_train, feed_dict=train_feed_dict_sample), global_step=i)
+        writer_test.add_summary(sess.run(merge_summary_accuracy_test, feed_dict=test_feed_dict_sample), global_step=i)
+        writer_train.add_summary(sess.run(merge_summary_accuracy_train, feed_dict=train_feed_dict_sample), global_step=i)
     # save model
     saver.save(sess, './.save/model.ckpt')

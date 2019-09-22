@@ -8,12 +8,18 @@ import Tools as tool
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
-LEARNING_RATE_BASE = 0.01
-LEARNING_RATE_DECAY_STEP = 1000
+TRAIN_EPOCH = 20
+EPOCH_OFFSET = 20
+LEARNING_RATE_BASE = 0.001
+LEARNING_RATE_DECAY_STEP = 2500
 LEARNING_RATE_DECAY_RATE = 0.99
-REGULARIZATION_RATE = 1e-4
-BATCH_SIZE = 2
+REGULARIZATION_RATE = 1e-3
 GRADE_LIMIT = 20
+DROPOUT_RATE = 0.3
+CHECK_FREQUENCY = 2500
+
+DATASET_DIR_PATH = "./.dataset"
+IMAGE_SHAPE = [32, 32, 3]
 
 
 def loss_on_test(data_loader):
@@ -24,9 +30,6 @@ def loss_on_test(data_loader):
         break
     return np.mean(test_loss)
 
-
-DATASET_DIR_PATH = "./.dataset"
-IMAGE_SHAPE = [32, 32, 3]
 
 with tf.variable_scope("Data_in"):
     image = tf.placeholder(tf.float32, shape=[None] + IMAGE_SHAPE, name="image")
@@ -270,19 +273,27 @@ with tf.variable_scope("Analyze_and_save"):
     saver = tf.train.Saver()
     # tensorboard image
     tf.summary.image("Image", image[:, :, :, :3], max_outputs=1)
-    # histogram filter
-    histogram_filter = [layer1_filter,layer2_filter,layer3_filter,layer4_filter,layer5_filter,
-                        layer6_filter,layer7_filter,layer8_filter,layer9_filter,layer10_filter,
-                        layer11_filter,layer12_filter,layer13_filter,layer14_filter,layer15_filter]
+    # histogram filter and layer output
+    histogram_filter = [layer1_filter, layer2_filter, layer3_filter, layer4_filter, layer5_filter,
+                        layer6_filter, layer7_filter, layer8_filter, layer9_filter, layer10_filter,
+                        layer11_filter, layer12_filter, layer13_filter, layer14_filter, layer15_filter]
+    hidden_layer = [layer1_active, layer2_active, layer3_active, layer4_active, layer5_active,
+                    layer6_active, layer7_active, layer8_active, layer9_active, layer10_active,
+                    layer11_active, layer12_active, layer13_active, layer14_active, layer15_active]
     for i in range(15):
-        tf.summary.image("Layer image/Layer{ord}".format(ord=i + 1), hidden_layer[i][:, :, :, :3], max_outputs=1)
-        tf.summary.histogram("filter/conv{layer_order}_filter".format(layer_order=i), histogram_filter[i])
+        tf.add_to_collection("summary_image",
+                             tf.summary.image("Layer image/Layer{ord}".format(ord=i + 1),
+                                              hidden_layer[i][:, :, :, :3],
+                                              max_outputs=1))
+        tf.add_to_collection("summary_histogram",
+                             tf.summary.histogram("filter/conv{layer_order}_filter".format(layer_order=i),
+                                                  histogram_filter[i]))
 
 with tf.variable_scope("Accuracy"):
     prediction = tf.cast(tf.argmax(fc_layer2_active, axis=1), tf.int32, name="Prediction")
     accuracy = tf.reduce_mean(tf.cast(tf.equal(prediction, label_), tf.float32), name="Accuracy")
-    accuracy_for_log = tf.reduce_mean(tf.cast(tf.equal(prediction, label_), tf.float32), name="Accuracy_log")
-    summary_accuracy = tf.summary.scalar("Accuracy_on_test", accuracy_for_log)
+    summary_accuracy_test = tf.summary.scalar("Accuracy_test", accuracy)
+    summary_accuracy_train = tf.summary.scalar("Accuracy_train", accuracy)
 
 print(">>> Nodes of cnn output layer: ", line_nodes)
 
@@ -294,18 +305,20 @@ with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
     reply_load = input('>>> Load model?(y/n): ')
     if reply_load == 'y':
-        saver.restore(sess,'./.save/model.ckpt')
+        saver.restore(sess, './.save/model.ckpt')
+        print("Model restored.")
     # load data set
     print(">>> Loading data set ... ", end='')
     timer.reset()
     train_data_loader, test_data_loader = tool.Create_dataloader(path=DATASET_DIR_PATH,
-                                                                 train_batch_size=BATCH_SIZE,
-                                                                 test_batch_size=100)
+                                                                 train_batch_size=4,
+                                                                 test_batch_size=100,
+                                                                 dataAug=True)
     # get train sample
     train_data_loader2, test_data_loader2 = tool.Create_dataloader(path=DATASET_DIR_PATH,
                                                                    train_batch_size=2000,
                                                                    test_batch_size=2000,
-                                                                   shuffle=False,
+                                                                   shuffle=True,
                                                                    dataAug=False)
     for train_data_image, train_data_label in train_data_loader2:
         train_feed_dict_sample = {image: train_data_image.asnumpy(), label_: train_data_label.asnumpy()}
@@ -313,33 +326,44 @@ with tf.Session() as sess:
     for test_data_image, test_data_label in test_data_loader2:
         test_feed_dict_sample = {image: test_data_image.asnumpy(), label_: test_data_label.asnumpy()}
         break
-    print("Finished ",timer.read())
+    print("Finished ", timer.read())
     # summary
-    summaries = tf.summary.merge_all()
+    merge_summary_info = tf.summary.merge([tf.get_collection("summary_image"),
+                                           tf.get_collection("summary_histogram")])
+    merge_summary_accuracy_test = tf.summary.merge([summary_accuracy_test])
+    merge_summary_accuracy_train = tf.summary.merge([summary_accuracy_train])
     # write graph
-    writer = tf.summary.FileWriter("./.log/without ResNet", tf.get_default_graph())
+    writer = tf.summary.FileWriter("./.log/with ResNet", tf.get_default_graph())
+    writer_train = tf.summary.FileWriter("./.log/with ResNet/train")
+    writer_test = tf.summary.FileWriter("./.log/with ResNet/test")
 
-    TRAIN_BATCH = 20
     counter = 0
     timer.reset()
-    for i in range(TRAIN_BATCH):
-        print(">>> After {epoch} epoch: ".format(epoch=i))
-        print("Loss on train: {train_loss:.5f}, Loss on test: {test_loss:.5f}".format(
-            train_loss=sess.run(loss, feed_dict=train_feed_dict_sample),
-            test_loss=sess.run(loss, feed_dict=test_feed_dict_sample)))
-        print("Cross entropy: {ce:.4f} Regularization: {reg:.4f}".format(
-            ce=sess.run(cross_entropy, feed_dict=train_feed_dict_sample),
-            reg=sess.run(regularization, feed_dict=train_feed_dict_sample)))
-        print("Accuracy on train: {acc:.2f}% Accuracy on test: {acc_test:.2f}%".format(
-            acc=sess.run(accuracy, feed_dict=train_feed_dict_sample) * 100,
-            acc_test=sess.run(accuracy, feed_dict=test_feed_dict_sample) * 100))
-        # write summary
-        writer.add_summary(sess.run(summaries, feed_dict=test_feed_dict_sample), global_step=i)
+    for i in range(TRAIN_EPOCH):
         # train model
+        i += EPOCH_OFFSET
         for train_data_image, train_data_label in train_data_loader:
+            if counter % CHECK_FREQUENCY == 0:
+                print(">>> After {batch} batch: ".format(batch=counter))
+                print("Learning rate: {lr}".format(lr=sess.run(learning_rate)))
+                print("Loss on train: {train_loss:.5f}, Loss on test: {test_loss:.5f}".format(
+                    train_loss=sess.run(loss, feed_dict=train_feed_dict_sample),
+                    test_loss=sess.run(loss, feed_dict=test_feed_dict_sample)))
+                print("Cross entropy: {ce:.4f} Regularization: {reg:.4f}".format(
+                    ce=sess.run(cross_entropy, feed_dict=train_feed_dict_sample),
+                    reg=sess.run(regularization, feed_dict=train_feed_dict_sample)))
+                print("Accuracy on train: {acc:.2f}% Accuracy on test: {acc_test:.2f}%".format(
+                    acc=sess.run(accuracy, feed_dict=train_feed_dict_sample) * 100,
+                    acc_test=sess.run(accuracy, feed_dict=test_feed_dict_sample) * 100))
+            counter += 1
+
             # generate feed dict
-            train_feed_dict = {image: train_data_image.asnumpy(), label_: train_data_label.asnumpy(), rate: 0.4}
+            train_feed_dict = {image: train_data_image.asnumpy(), label_: train_data_label.asnumpy(), rate: DROPOUT_RATE}
             # run
             sess.run(train_step, feed_dict=train_feed_dict)
+        # write summary
+        writer.add_summary(sess.run(merge_summary_info, feed_dict=test_feed_dict_sample), global_step=i)
+        writer_test.add_summary(sess.run(merge_summary_accuracy_test, feed_dict=test_feed_dict_sample), global_step=i)
+        writer_train.add_summary(sess.run(merge_summary_accuracy_train, feed_dict=train_feed_dict_sample), global_step=i)
     # save model
     saver.save(sess, './.save/model.ckpt')
