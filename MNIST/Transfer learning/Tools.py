@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import random
 import mxnet.ndarray as nd
 import mxnet as mx
+from PIL import Image
 
 # 训练集文件
 train_images_idx3_ubyte_file = 'train-images.idx3-ubyte'
@@ -42,14 +43,15 @@ class MNIST_Dataset():
         # 这里还有加上图像大小784，是为了读取784个B格式数据，如果没有则只会读取一个值（即一副图像中的一个像素值）
         fmt_image = '>' + str(image_size) + 'B'
         # print(fmt_image,offset,struct.calcsize(fmt_image))
-        images = nd.empty((num_images, num_rows, num_cols))
+        images = nd.empty((num_images, num_rows, num_cols, 3))
         # plt.figure()
         print("Loading...", end="")
         for i in range(num_images):
             if show_process == True and (i + 1) % 5000 == 0:
                 print(' %.0f' % ((i + 1) / num_images * 100), end='%')
                 # print(offset)
-            images[i] = nd.array(struct.unpack_from(fmt_image, bin_data, offset)).reshape((num_rows, num_cols))
+            images[i, :, :, 0] = images[i, :, :, 1] = images[i, :, :, 2] = nd.array(
+                struct.unpack_from(fmt_image, bin_data, offset)).reshape((num_rows, num_cols)) / 255
             # print(images[i])
             offset += struct.calcsize(fmt_image)
             # plt.imshow(images[i],'gray')
@@ -80,6 +82,7 @@ class MNIST_Dataset():
             labels[i] = struct.unpack_from(fmt_image, bin_data, offset)[0]
             offset += struct.calcsize(fmt_image)
         print("")
+        labels = nd.cast(labels, int)
         return labels
 
     def __init__(self, root_path, show_process=False):
@@ -153,8 +156,8 @@ def Image_preprocessed(image_list):
     return image_list
 
 
-def Create_dataloader(data_path, train_batch_size, test_batch_size, shuffle=True):
-    data = MNIST_Dataset(data_path)
+def Create_dataloader(data_path, train_batch_size, test_batch_size, shuffle=True, show_process=False):
+    data = MNIST_Dataset(data_path, show_process=show_process)
     data_set = gdata.ArrayDataset(Image_preprocessed(data.train["image"]),
                                   Image_preprocessed(data.train["label"]))
     train_dataloader = gdata.DataLoader(data_set, train_batch_size, shuffle=shuffle)
@@ -166,7 +169,7 @@ def Create_dataloader(data_path, train_batch_size, test_batch_size, shuffle=True
 
 if __name__ == "__main__":
     # dataset = MNIST_Dataset("./.dataset", show_process=True)
-    train_data_loader, test_data_loader = Create_dataloader("./.dataset", 10, 100)
+    train_data_loader, test_data_loader = Create_dataloader("./.dataset", 10, 100, show_process=True)
     for x, y in train_data_loader:
         print(x.shape)
         break
