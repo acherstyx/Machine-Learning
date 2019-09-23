@@ -2,6 +2,11 @@ import tensorflow as tf
 from tensorflow.python.platform import gfile
 import tensorflow.contrib.slim as slim
 import Tools as tool
+import os
+import warnings
+import numpy as np
+warnings.filterwarnings('ignore')
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 # 加载模型
 import tensorflow.contrib.slim.python.slim.nets.inception_v3 as inception_v3
@@ -16,9 +21,11 @@ CHECKPOINT_EXCLUDE_SCOPES = 'InceptionV3/Logits,InceptionV3/AuxLogits'
 # 需要训练的网络层参数名称
 TRAINABLE_SCOPES = 'InceptionV3/Logits,InceptionV3/AuxLogits'
 
-LEARNING_RATE = 0.0001
+LEARNING_RATE = 0.00001
 TRAIN_EPOCH = 20
 BATCH_SIZE = 4
+
+reply_load = input('>>> Load model?(y/n): ')
 
 
 # 从获取参数，确认那些参数需要加载
@@ -51,10 +58,7 @@ def get_trainable_variables():
 
 def main():
     # 加载预处理好的数据。
-    train_dataloader, test_dataloader = tool.Create_dataloader("./.dataset", BATCH_SIZE, 100, True, True)
-    for image, label in test_dataloader:
-        validation_images = image
-        validation_labels = label
+    train_dataloader, test_dataloader = tool.Create_dataloader("./.dataset", BATCH_SIZE, 10, True, True)
 
     # 定义inception-v3的输入，images为输入图片，labels为每一张图片对应的标签。
     images = tf.placeholder(tf.float32, [None, 28, 28, 3], name='input_images')
@@ -99,6 +103,10 @@ def main():
         print('Loading tuned variables from %s' % CKPT_FILE)
         load_fn(sess)
 
+        if reply_load == 'y':
+            saver.restore(sess, TRAIN_FILE + "-0")
+            print("Model restored.")
+
         counter = 0
         for i in range(TRAIN_EPOCH):
             for training_images, training_labels in train_dataloader:
@@ -107,14 +115,19 @@ def main():
                     labels: training_labels.asnumpy()})
 
                 counter += 1
-                if counter % 500 == 0:
-                    validation_accuracy = sess.run(evaluation_step,
-                                                   feed_dict={images: validation_images.asnumpy(),
-                                                              labels: validation_labels.asnumpy()})
+                if counter % 10 == 0:
+                    test_counter = 0
+                    validation_accuracy = []
+                    for validation_images, validation_labels in test_dataloader:
+                        test_counter += 1
+                        validation_accuracy.append(sess.run(evaluation_step,
+                                                            feed_dict={images: validation_images.asnumpy(),
+                                                                       labels: validation_labels.asnumpy()}))
+                        if test_counter > 100:
+                            break
                     print('Step %d: Training loss is %.1f Validation accuracy = %.1f%%' % (
-                        i, loss, validation_accuracy * 100.0))
-            saver.save(sess, TRAIN_FILE, global_step=i)
-
+                        counter, loss, np.mean(validation_accuracy) * 100.0))
+                    saver.save(sess, TRAIN_FILE, global_step=i)
 
         # 在最后的测试数据上测试正确率。
         test_accuracy = sess.run(evaluation_step, feed_dict={
