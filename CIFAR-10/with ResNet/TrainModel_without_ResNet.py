@@ -3,23 +3,27 @@ import numpy as np
 import os
 import matplotlib.pyplot as plt
 import mxnet.ndarray as nd
-
+from datetime import datetime
 import Tools as tool
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
-TRAIN_EPOCH = 20
-EPOCH_OFFSET = 20
-LEARNING_RATE_BASE = 0.001
-LEARNING_RATE_DECAY_STEP = 2500
+TRAIN_EPOCH = 40
+EPOCH_OFFSET = 40
+LEARNING_RATE_BASE = 0.0005
+LEARNING_RATE_DECAY_STEP = 20000
 LEARNING_RATE_DECAY_RATE = 0.99
-REGULARIZATION_RATE = 1e-3
-GRADE_LIMIT = 20
-DROPOUT_RATE = 0.3
-CHECK_FREQUENCY = 2500
+REGULARIZATION_RATE = 1e-5
+GRAD_LIMIT = 5
+DROPOUT_RATE = 0.4
+PRINT_FREQUENCY = 20000
+SAVE_FREQUENCY = 1000
+DATA_AUGMENTATION = True
 
 DATASET_DIR_PATH = "./.dataset"
 IMAGE_SHAPE = [32, 32, 3]
+
+TIMESTAMP = "{0:%Y-%m-%dT%H-%M-%S/}".format(datetime.now())
 
 
 def loss_on_test(data_loader):
@@ -37,7 +41,6 @@ with tf.variable_scope("Data_in"):
     rate = tf.placeholder_with_default(0.0, shape=())
 
 with tf.variable_scope("ResNet"):
-    hidden_layer = []
     # Layer 1 size:3(in)->32
     layer1_filter = tf.get_variable(name="layer1_filter",
                                     shape=[3, 3, 3, 32],
@@ -47,7 +50,6 @@ with tf.variable_scope("ResNet"):
                                strides=[1, 1, 1, 1],
                                padding="SAME")
     layer1_active = tf.nn.relu(layer1_init)
-    hidden_layer.append(layer1_active)
 
     # Layer 2 size:same
     layer2_filter = tf.get_variable(name="layer2_filter",
@@ -58,7 +60,6 @@ with tf.variable_scope("ResNet"):
                                strides=[1, 1, 1, 1],
                                padding="SAME")
     layer2_active = tf.nn.relu(layer2_init)
-    hidden_layer.append(layer2_active)
 
     # layer 3 size:same
     layer3_filter = tf.get_variable(name="layer3_filter",
@@ -69,7 +70,6 @@ with tf.variable_scope("ResNet"):
                                strides=[1, 1, 1, 1],
                                padding="SAME")
     layer3_active = tf.nn.relu(layer3_init)
-    hidden_layer.append(layer3_active)
 
     # layer 4 size:32->48
     layer4_filter = tf.get_variable(name="layer4_filter",
@@ -80,7 +80,6 @@ with tf.variable_scope("ResNet"):
                                strides=[1, 1, 1, 1],
                                padding="SAME")
     layer4_active = tf.nn.relu(layer4_init)
-    hidden_layer.append(layer4_active)
 
     # layer 5 size:48->48
     layer5_filter = tf.get_variable(name="layer5_filter",
@@ -91,7 +90,6 @@ with tf.variable_scope("ResNet"):
                                strides=[1, 1, 1, 1],
                                padding="SAME")
     layer5_active = tf.nn.relu(layer5_init)
-    hidden_layer.append(layer5_active)
 
     # max pool 4 2
     pool1 = tf.nn.max_pool(layer5_active,
@@ -111,7 +109,6 @@ with tf.variable_scope("ResNet"):
                                strides=[1, 1, 1, 1],
                                padding="SAME")
     layer6_active = tf.nn.relu(layer6_init)
-    hidden_layer.append(layer6_active)
 
     # layer 7 size:80->80
     layer7_filter = tf.get_variable(name="layer7_filter",
@@ -122,7 +119,6 @@ with tf.variable_scope("ResNet"):
                                strides=[1, 1, 1, 1],
                                padding="SAME")
     layer7_active = tf.nn.relu(layer7_init)
-    hidden_layer.append(layer7_active)
 
     # layer 8 size:80->80
     layer8_filter = tf.get_variable(name="layer8_filter",
@@ -133,7 +129,6 @@ with tf.variable_scope("ResNet"):
                                strides=[1, 1, 1, 1],
                                padding="SAME")
     layer8_active = tf.nn.relu(layer8_init)
-    hidden_layer.append(layer8_active)
 
     # layer 9 size:80->80
     layer9_filter = tf.get_variable(name="layer9_filter",
@@ -144,7 +139,6 @@ with tf.variable_scope("ResNet"):
                                strides=[1, 1, 1, 1],
                                padding="SAME")
     layer9_active = tf.nn.relu(layer9_init)
-    hidden_layer.append(layer9_active)
 
     # layer 10 size:80->80
     layer10_filter = tf.get_variable(name="layer10_filter",
@@ -155,7 +149,6 @@ with tf.variable_scope("ResNet"):
                                 strides=[1, 1, 1, 1],
                                 padding="SAME")
     layer10_active = tf.nn.relu(layer10_init)
-    hidden_layer.append(layer10_active)
 
     # avg pool 4 2
     pool2 = tf.nn.avg_pool(layer10_active,
@@ -175,7 +168,6 @@ with tf.variable_scope("ResNet"):
                                 strides=[1, 1, 1, 1],
                                 padding="SAME")
     layer11_active = tf.nn.relu(layer11_init)
-    hidden_layer.append(layer11_active)
 
     # layer 12 size:128->128
     layer12_filter = tf.get_variable(name="layer12_filter",
@@ -186,7 +178,6 @@ with tf.variable_scope("ResNet"):
                                 strides=[1, 1, 1, 1],
                                 padding="SAME")
     layer12_active = tf.nn.relu(layer12_init)
-    hidden_layer.append(layer12_active)
 
     # layer 13 size:128->128
     layer13_filter = tf.get_variable(name="layer13_filter",
@@ -197,7 +188,6 @@ with tf.variable_scope("ResNet"):
                                 strides=[1, 1, 1, 1],
                                 padding="SAME")
     layer13_active = tf.nn.relu(layer13_init)
-    hidden_layer.append(layer13_active)
 
     # layer 14 size:128->128
     layer14_filter = tf.get_variable(name="layer14_filter",
@@ -208,7 +198,6 @@ with tf.variable_scope("ResNet"):
                                 strides=[1, 1, 1, 1],
                                 padding="SAME")
     layer14_active = tf.nn.relu(layer14_init)
-    hidden_layer.append(layer14_active)
 
     # layer 15 size:128->128
     layer15_filter = tf.get_variable(name="layer15_filter",
@@ -219,7 +208,6 @@ with tf.variable_scope("ResNet"):
                                 strides=[1, 1, 1, 1],
                                 padding="SAME")
     layer15_active = tf.nn.relu(layer15_init)
-    hidden_layer.append(layer15_active)
 
     # avg pool 8 4
     pool3 = tf.nn.avg_pool(layer15_active,
@@ -266,8 +254,8 @@ with tf.variable_scope("Train_model"):
     # optimize
     optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate)
     grads, variables = zip(*optimizer.compute_gradients(loss))
-    grads, global_norm = tf.clip_by_global_norm(grads, GRADE_LIMIT)
-    train_step = optimizer.apply_gradients(zip(grads, variables),global_step)
+    grads, global_norm = tf.clip_by_global_norm(grads, GRAD_LIMIT)
+    train_step = optimizer.apply_gradients(zip(grads, variables), global_step)
 
 with tf.variable_scope("Analyze_and_save"):
     saver = tf.train.Saver()
@@ -290,10 +278,22 @@ with tf.variable_scope("Analyze_and_save"):
                                                   histogram_filter[i]))
 
 with tf.variable_scope("Accuracy"):
+    # Accuracy
     prediction = tf.cast(tf.argmax(fc_layer2_active, axis=1), tf.int32, name="Prediction")
     accuracy = tf.reduce_mean(tf.cast(tf.equal(prediction, label_), tf.float32), name="Accuracy")
-    summary_accuracy_test = tf.summary.scalar("Accuracy_test", accuracy)
-    summary_accuracy_train = tf.summary.scalar("Accuracy_train", accuracy)
+    summary_accuracy = tf.summary.scalar("Accuracy", accuracy)
+
+with tf.variable_scope("Grad_and_loss"):
+    # learning rate
+    summary_learning_rate = tf.summary.scalar("Learning_rate", learning_rate)
+    # grad
+    summary_grad = []
+    for index, grad in enumerate(grads):
+        summary_grad.append(tf.summary.scalar("grad/{}".format(index), tf.reduce_max(grad)))
+    # Loss log
+    summary_loss = tf.summary.scalar("Loss", loss)
+    summary_loss_cross_entropy = tf.summary.scalar("Cross entropy", cross_entropy)
+    summary_loss_regularization = tf.summary.scalar("Regularization", regularization)
 
 print(">>> Nodes of cnn output layer: ", line_nodes)
 
@@ -305,7 +305,7 @@ with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
     reply_load = input('>>> Load model?(y/n): ')
     if reply_load == 'y':
-        saver.restore(sess, './.save/model.ckpt')
+        saver.restore(sess, './.save/with ResNet/model.ckpt')
         print("Model restored.")
     # load data set
     print(">>> Loading data set ... ", end='')
@@ -313,11 +313,11 @@ with tf.Session() as sess:
     train_data_loader, test_data_loader = tool.Create_dataloader(path=DATASET_DIR_PATH,
                                                                  train_batch_size=4,
                                                                  test_batch_size=100,
-                                                                 dataAug=True)
+                                                                 dataAug=DATA_AUGMENTATION)
     # get train sample
     train_data_loader2, test_data_loader2 = tool.Create_dataloader(path=DATASET_DIR_PATH,
-                                                                   train_batch_size=2000,
-                                                                   test_batch_size=2000,
+                                                                   train_batch_size=500,
+                                                                   test_batch_size=500,
                                                                    shuffle=True,
                                                                    dataAug=False)
     for train_data_image, train_data_label in train_data_loader2:
@@ -330,40 +330,49 @@ with tf.Session() as sess:
     # summary
     merge_summary_info = tf.summary.merge([tf.get_collection("summary_image"),
                                            tf.get_collection("summary_histogram")])
-    merge_summary_accuracy_test = tf.summary.merge([summary_accuracy_test])
-    merge_summary_accuracy_train = tf.summary.merge([summary_accuracy_train])
+    merge_summary_accuracy = tf.summary.merge([summary_accuracy])
+    merge_summary_train_info = tf.summary.merge([summary_loss, summary_loss_cross_entropy,
+                                                 summary_loss_regularization, summary_learning_rate]
+                                                + summary_grad)
     # write graph
-    writer = tf.summary.FileWriter("./.log/with ResNet", tf.get_default_graph())
-    writer_train = tf.summary.FileWriter("./.log/with ResNet/train")
-    writer_test = tf.summary.FileWriter("./.log/with ResNet/test")
+    writer = tf.summary.FileWriter("./.log/with ResNet/" + TIMESTAMP, tf.get_default_graph())
+    writer_train = tf.summary.FileWriter("./.log/with ResNet/" + TIMESTAMP + "/train")
+    writer_test = tf.summary.FileWriter("./.log/with ResNet/" + TIMESTAMP + "/test")
 
-    counter = 0
     timer.reset()
     for i in range(TRAIN_EPOCH):
         # train model
-        i += EPOCH_OFFSET
         for train_data_image, train_data_label in train_data_loader:
-            if counter % CHECK_FREQUENCY == 0:
-                print(">>> After {batch} batch: ".format(batch=counter))
-                print("Learning rate: {lr}".format(lr=sess.run(learning_rate)))
-                print("Loss on train: {train_loss:.5f}, Loss on test: {test_loss:.5f}".format(
-                    train_loss=sess.run(loss, feed_dict=train_feed_dict_sample),
-                    test_loss=sess.run(loss, feed_dict=test_feed_dict_sample)))
-                print("Cross entropy: {ce:.4f} Regularization: {reg:.4f}".format(
-                    ce=sess.run(cross_entropy, feed_dict=train_feed_dict_sample),
-                    reg=sess.run(regularization, feed_dict=train_feed_dict_sample)))
-                print("Accuracy on train: {acc:.2f}% Accuracy on test: {acc_test:.2f}%".format(
-                    acc=sess.run(accuracy, feed_dict=train_feed_dict_sample) * 100,
-                    acc_test=sess.run(accuracy, feed_dict=test_feed_dict_sample) * 100))
-            counter += 1
+            # write summary
+            counter = sess.run(global_step)
+            if counter % SAVE_FREQUENCY == 0:
+                writer.add_summary(sess.run(merge_summary_info, feed_dict=test_feed_dict_sample),
+                                   global_step=counter)
+                writer_test.add_summary(sess.run(merge_summary_accuracy, feed_dict=test_feed_dict_sample),
+                                        global_step=counter)
+                writer_train.add_summary(sess.run(merge_summary_accuracy, feed_dict=train_feed_dict_sample),
+                                         global_step=counter)
 
             # generate feed dict
-            train_feed_dict = {image: train_data_image.asnumpy(), label_: train_data_label.asnumpy(), rate: DROPOUT_RATE}
+            train_feed_dict = {image: train_data_image.asnumpy(),
+                               label_: train_data_label.asnumpy(),
+                               rate: DROPOUT_RATE}
             # run
-            sess.run(train_step, feed_dict=train_feed_dict)
-        # write summary
-        writer.add_summary(sess.run(merge_summary_info, feed_dict=test_feed_dict_sample), global_step=i)
-        writer_test.add_summary(sess.run(merge_summary_accuracy_test, feed_dict=test_feed_dict_sample), global_step=i)
-        writer_train.add_summary(sess.run(merge_summary_accuracy_train, feed_dict=train_feed_dict_sample), global_step=i)
+            a, run_summary_train_info = sess.run([train_step, merge_summary_train_info], feed_dict=train_feed_dict)
+            # write grade
+            writer.add_summary(run_summary_train_info, global_step=counter)
+
+        # print each epoch
+        print(">>> After {batch} step: ".format(batch=i + 1))
+        print("Learning rate: {lr}".format(lr=sess.run(learning_rate)))
+        print("Loss on train: {train_loss:.5f}, Loss on test: {test_loss:.5f}".format(
+            train_loss=sess.run(loss, feed_dict=train_feed_dict_sample),
+            test_loss=sess.run(loss, feed_dict=test_feed_dict_sample)))
+        print("Cross entropy: {ce:.4f} Regularization: {reg:.4f}".format(
+            ce=sess.run(cross_entropy, feed_dict=train_feed_dict_sample),
+            reg=sess.run(regularization, feed_dict=train_feed_dict_sample)))
+        print("Accuracy on train: {acc:.2f}% Accuracy on test: {acc_test:.2f}%".format(
+            acc=sess.run(accuracy, feed_dict=train_feed_dict_sample) * 100,
+            acc_test=sess.run(accuracy, feed_dict=test_feed_dict_sample) * 100))
     # save model
-    saver.save(sess, './.save/model.ckpt')
+    saver.save(sess, './.save/with ResNet/model.ckpt')

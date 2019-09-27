@@ -17,14 +17,12 @@ def data_augmentation(image_list, size_cut):
     image_out = []
     for image in image_list:
         augmenter = mx.image.CreateAugmenter(data_shape=(3, 32, 32),
-                                             rand_crop=True,
-                                             rand_resize=random.randint(28, 32),
                                              rand_gray=random.random() * 0.2,
                                              rand_mirror=True,
                                              brightness=random.random() * 0.5,
                                              contrast=random.random() * 0.8,
                                              saturation=random.random() * 0.4,
-                                             pca_noise=random.random() * 1.0
+                                             pca_noise=random.random() * 0.8,
                                              )
         temp = nd.array(image)
         for aug in augmenter:
@@ -165,15 +163,16 @@ if __name__ == "__main__":
     print("Test image augmentation")
     cifar10 = CIFAR10("./.dataset/")
 
-    image_init = cifar10.Train["image"][1400]
-    auged = data_augmentation([image_init, ], (24, 24))
+    while True:
+        image_init = cifar10.Train["image"][random.randint(0,1000)]
+        auged = data_augmentation([image_init, ], (24, 24))
 
-    image_init = np.float32(image_init)
-    image_init = image_init / np.max(image_init)
-    image_out = auged[0].asnumpy()
-    image_out = image_out / np.max(image_out)
+        image_init = np.float32(image_init)
+        image_init = image_init / np.max(image_init)
+        image_out = auged[0].asnumpy()
+        image_out = image_out / np.max(image_out)
 
-    plt.imshow(image_init)
-    plt.pause(2)
-    plt.imshow(image_out)
-    plt.pause(2)
+        plt.imshow(image_init)
+        plt.pause(2)
+        plt.imshow(image_out)
+        plt.pause(2)
