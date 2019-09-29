@@ -6,6 +6,13 @@ import warnings
 import numpy as np
 import ImageIO as image_io
 import cv2.cv2 as cv2
+import os
+
+os.environ["CUDA_VISIBLE_DEVICES"] = '1'  # 指定第一块GPU可用
+config = tf.ConfigProto()
+config.gpu_options.per_process_gpu_memory_fraction = 0.001  # 程序最多只能占用指定gpu50%的显存
+
+STYLES = ["Clubs", "Diamonds", "Hearts", "Spades"]
 
 warnings.filterwarnings('ignore')
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
@@ -27,7 +34,7 @@ LEARNING_RATE = 0.0002
 TRAIN_EPOCH = 20
 BATCH_SIZE = 4
 
-NUM_CLASS = 4
+NUM_CLASS = 52
 
 
 # 从获取参数，确认那些参数需要加载
@@ -59,9 +66,6 @@ def get_trainable_variables():
 
 
 def main():
-    # 加载预处理好的数据。
-    train_dataloader, test_dataloader = tool.Create_dataloader_color("./.dataset", BATCH_SIZE, 10, True)
-
     # 定义inception-v3的输入，images为输入图片，labels为每一张图片对应的标签。
     images = tf.placeholder(tf.float32, [None, 299, 299, 3], name='input_images')
     labels = tf.placeholder(tf.int64, [None], name='labels')
@@ -105,21 +109,37 @@ def main():
         print('Loading tuned variables from %s' % CKPT_FILE)
         load_fn(sess)
 
-        saver.restore(sess, TRAIN_FILE + "-0")
+        saver.restore(sess, TRAIN_FILE + "-4")
         print("Model restored.")
 
         print("Start recognize")
         image_reader = image_io.reader()
+
+        # predict
+        counter = 0
+        record = 0
         while True:
-            _,image = image_reader.read(False)
-            cv2.imshow("input",image)
+            _, image = image_reader.read(False)
 
-            cv2.waitKey()
-            image_resized = np.reshape(cv2.resize(image,(299,299)),(1,299,299,3))
-            predict_logits = sess.run(softmaxed, feed_dict={images:image_resized})
-            print(predict_logits)
+            image_resized = np.reshape(cv2.resize(image, (299, 299)), (1, 299, 299, 3))
+            cv2.imshow("input", image_resized[0])
+            cv2.waitKey(1)
+            predict_logits = sess.run(softmaxed, feed_dict={images: image_resized})
+            print(predict_logits[0], end="  ")
+            if max(predict_logits[0] > 0.03):
+                counter += 3
+                predict_num = np.argmax(predict_logits)
+                if counter > 3 and record == predict_num:
+                    color = predict_num / 13
+                    number = predict_num - predict_num / 13 * 13 + 1
+                    print(STYLES[int(color)],int(number))
+                else:
+                    print("")
+                record = predict_num
+            else:
+                counter = 3
+                print("")
             pass
-
 
 
 if __name__ == '__main__':

@@ -21,11 +21,11 @@ CHECKPOINT_EXCLUDE_SCOPES = 'InceptionV3/Logits,InceptionV3/AuxLogits'
 # 需要训练的网络层参数名称
 TRAINABLE_SCOPES = 'InceptionV3/Logits,InceptionV3/AuxLogits'
 
-LEARNING_RATE = 0.0002
-TRAIN_EPOCH = 20
-BATCH_SIZE = 4
+LEARNING_RATE = 0.00001
+TRAIN_EPOCH = 5
+BATCH_SIZE = 16
 
-NUM_CLASS = 4
+NUM_CLASS = 52
 
 reply_load = input('>>> Load model?(y/n): ')
 
@@ -60,12 +60,11 @@ def get_trainable_variables():
 
 def main():
     # 加载预处理好的数据。
-    train_dataloader, test_dataloader = tool.Create_dataloader_color("./.dataset", BATCH_SIZE, 10, True)
+    train_dataloader, test_dataloader = tool.Create_dataloader("./.dataset", BATCH_SIZE, 10, True, True)
 
     # 定义inception-v3的输入，images为输入图片，labels为每一张图片对应的标签。
     images = tf.placeholder(tf.float32, [None, 299, 299, 3], name='input_images')
     labels = tf.placeholder(tf.int64, [None], name='labels')
-
 
     # 定义inception-v3模型。因为谷歌给出的只有模型参数取值，所以这里
     # 需要在这个代码中定义inception-v3的模型结构。虽然理论上需要区分训练和
@@ -111,12 +110,8 @@ def main():
         counter = 0
         for i in range(TRAIN_EPOCH):
             for training_images, training_labels in train_dataloader:
-                _, loss = sess.run([train_step, total_loss], feed_dict={
-                    images: training_images.asnumpy(),
-                    labels: training_labels.asnumpy()})
-
                 counter += 1
-                if counter % 10 == 0:
+                if counter % 100 == 0:
                     test_counter = 0
                     validation_accuracy = []
                     for validation_images, validation_labels in test_dataloader:
@@ -124,12 +119,16 @@ def main():
                         validation_accuracy.append(sess.run(evaluation_step,
                                                             feed_dict={images: validation_images.asnumpy(),
                                                                        labels: validation_labels.asnumpy()}))
-                        if test_counter > 100:
+                        if test_counter > 20:
                             break
                     print('Step %d: Training loss is %.1f Validation accuracy = %.1f%%' % (
                         counter, loss, np.mean(validation_accuracy) * 100.0))
                     saver.save(sess, TRAIN_FILE, global_step=i)
 
+                # train
+                _, loss = sess.run([train_step, total_loss], feed_dict={
+                    images: training_images.asnumpy(),
+                    labels: training_labels.asnumpy()})
         # 在最后的测试数据上测试正确率。
         test_accuracy = sess.run(evaluation_step, feed_dict={
             images: validation_images, labels: validation_labels})
