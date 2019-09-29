@@ -3,7 +3,7 @@ from warnings import warn
 import imutils
 
 
-class reader:
+class ImgReader:
     fps = None
     size = None
     __image_capture = None
@@ -22,12 +22,12 @@ class reader:
         successful, frame = self.__image_capture.read()
         if not successful:
             warn("Failed to get fram from video.")
-            raise (RuntimeError)
+            raise RuntimeError
         if not isinstance(with_pre_processing, bool):
-            warn("Value seems to be unvalid. Skip pre-processing.")
+            warn("Value seems to be invalid. Skip pre-processing.")
             with_pre_processing = False
         # 预处理步骤
-        if with_pre_processing == True:
+        if with_pre_processing:
             frame = self.__image_pre_processing(frame)
         return successful, frame
 
@@ -36,10 +36,10 @@ class reader:
         frame = cv2.GaussianBlur(frame, (7, 7), 0)  # 高斯模糊
         return frame
 
-    def showsample(self, with_pre_processing=False):
+    def show_sample(self, with_pre_processing=False):
         successful, image = self.read(with_pre_processing)
         if successful:
-            if with_pre_processing == True:
+            if with_pre_processing:
                 cv2.imshow("Sample with pre-processing(press any key to continue)", image)
             else:
                 cv2.imshow("Sample without pre-processing(press any key to continue)", image)
@@ -50,7 +50,7 @@ class reader:
 
     def recorder(self, file_path, time_in_sec, with_pre_processing=False):
         if file_path[-4:] != ".avi":
-            raise (ValueError)
+            raise ValueError
         videoWriter = cv2.VideoWriter(file_path, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), self.fps, self.size)
 
         success, frame = self.read(with_pre_processing)
@@ -62,14 +62,10 @@ class reader:
             frame_left -= 1
 
 
-class writer:
-    pass
-
-
 if __name__ == "__main__":
-    a = reader("./Recognition/00122.MTS")
+    a = ImgReader("./Recognition/00122.MTS")
     _, image = a.read()
-    a.showsample(True)
-    a.showsample(False)
+    a.show_sample(True)
+    a.show_sample(False)
 
     a.recorder("./sample.avi", 5)

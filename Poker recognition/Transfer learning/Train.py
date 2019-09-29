@@ -21,11 +21,11 @@ CHECKPOINT_EXCLUDE_SCOPES = 'InceptionV3/Logits,InceptionV3/AuxLogits'
 # 需要训练的网络层参数名称
 TRAINABLE_SCOPES = 'InceptionV3/Logits,InceptionV3/AuxLogits'
 
-LEARNING_RATE = 0.00001
-TRAIN_EPOCH = 5
-BATCH_SIZE = 16
+LEARNING_RATE = 0.00005
+TRAIN_EPOCH = 1
+BATCH_SIZE = 4
 
-NUM_CLASS = 52
+NUM_CLASS = 4
 
 reply_load = input('>>> Load model?(y/n): ')
 
@@ -60,7 +60,7 @@ def get_trainable_variables():
 
 def main():
     # 加载预处理好的数据。
-    train_dataloader, test_dataloader = tool.Create_dataloader("./.dataset", BATCH_SIZE, 10, True, True)
+    train_dataloader, test_dataloader = tool.Create_dataloader_color("./.dataset", BATCH_SIZE, 10, True, True)
 
     # 定义inception-v3的输入，images为输入图片，labels为每一张图片对应的标签。
     images = tf.placeholder(tf.float32, [None, 299, 299, 3], name='input_images')
@@ -104,7 +104,7 @@ def main():
         load_fn(sess)
 
         if reply_load == 'y':
-            saver.restore(sess, TRAIN_FILE + "-0")
+            saver.restore(sess, TRAIN_FILE)
             print("Model restored.")
 
         counter = 0
@@ -123,7 +123,7 @@ def main():
                             break
                     print('Step %d: Training loss is %.1f Validation accuracy = %.1f%%' % (
                         counter, loss, np.mean(validation_accuracy) * 100.0))
-                    saver.save(sess, TRAIN_FILE, global_step=i)
+                    saver.save(sess, TRAIN_FILE)
 
                 # train
                 _, loss = sess.run([train_step, total_loss], feed_dict={

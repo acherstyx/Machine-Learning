@@ -13,10 +13,10 @@ STYLES = ["Clubs", "Diamonds", "Hearts", "Spades"]
 def all_path(path):
     result = []  # 所有的文件
 
-    for maindir, subdir, file_name_list in os.walk(path):
+    for main_dir, subdir, file_name_list in os.walk(path):
         for filename in file_name_list:
-            apath = os.path.join(maindir, filename)  # 合并成一个完整路径
-            result.append(apath)
+            path = os.path.join(main_dir, filename)  # 合并成一个完整路径
+            result.append(path)
     # print(result)
     return result
 
