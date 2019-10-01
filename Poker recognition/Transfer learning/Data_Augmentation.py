@@ -63,7 +63,7 @@ def __brightness_img(img, b):
 
 def __rotate(img):
     rows, cols, _ = img.shape
-    # 90度旋转
+
     M = cv2.getRotationMatrix2D((cols / 2, rows / 2), random.randint(-10,10), 0.9)
     dst = cv2.warpAffine(img, M, (cols, rows))
     return dst

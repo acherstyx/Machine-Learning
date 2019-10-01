@@ -4,8 +4,8 @@ import os
 import cv2.cv2 as cv2
 
 STYLES = ["Clubs", "Diamonds", "Hearts", "Spades"]
-INDEX_LIMIT = 400
-OFF_SET = 100
+INDEX_LIMIT = 300
+OFF_SET = 500
 
 
 def all_path(path):

@@ -9,9 +9,9 @@ import cv2.cv2 as cv2
 import os
 import Data_Augmentation as tool
 
-#os.environ["CUDA_VISIBLE_DEVICES"] = '1'  # 指定第一块GPU可用
-#config = tf.ConfigProto()
-#config.gpu_options.per_process_gpu_memory_fraction = 0.001  # 程序最多只能占用指定gpu50%的显存
+os.environ["CUDA_VISIBLE_DEVICES"] = '1'  # 指定第一块GPU可用
+config = tf.ConfigProto()
+config.gpu_options.per_process_gpu_memory_fraction = 0.001  # 程序最多只能占用指定gpu50%的显存
 
 STYLES = ["Clubs", "Diamonds", "Hearts", "Spades"]
 
@@ -35,7 +35,7 @@ LEARNING_RATE = 0.0002
 TRAIN_EPOCH = 20
 BATCH_SIZE = 4
 
-NUM_CLASS = 4
+NUM_CLASS = 13
 
 
 # 从获取参数，确认那些参数需要加载
@@ -123,18 +123,19 @@ def main():
             _, image = image_reader.read(False)
 
             image_resized = np.reshape(cv2.resize(image, (299, 299)), (1, 299, 299, 3))
-            image_resized = [tool.__contrast_img(image_resized[0], 1.0, 80)]
+            image_resized = [tool.__contrast_img(image_resized[0], 1.0, 40)]
             cv2.imshow("input", image_resized[0])
             cv2.waitKey(1)
             predict_logits = sess.run(softmaxed, feed_dict={images: image_resized})
             print(predict_logits[0], end="  ")
-            if max(predict_logits[0] > 0.9):
+            if max(predict_logits[0] > 0.3):
                 counter += 1
                 predict_num = np.argmax(predict_logits)
                 if counter > 3 and record == predict_num:
-                    color = predict_num
-                    #                    number = predict_num - predict_num / 13 * 13 + 1
-                    print(STYLES[int(color)])
+                    # color = predict_num
+                    # number = predict_num - predict_num / 13 * 13 + 1
+                    # print(STYLES[int(color)])
+                    print(predict_num+1)
                 else:
                     print("")
                 record = predict_num

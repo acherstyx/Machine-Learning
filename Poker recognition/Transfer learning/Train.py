@@ -25,7 +25,7 @@ LEARNING_RATE = 0.00005
 TRAIN_EPOCH = 1
 BATCH_SIZE = 4
 
-NUM_CLASS = 4
+NUM_CLASS = 13
 
 reply_load = input('>>> Load model?(y/n): ')
 
@@ -60,7 +60,7 @@ def get_trainable_variables():
 
 def main():
     # 加载预处理好的数据。
-    train_dataloader, test_dataloader = tool.Create_dataloader_color("./.dataset", BATCH_SIZE, 10, True, True)
+    train_dataloader, test_dataloader = tool.Create_dataloader_number("./.dataset", BATCH_SIZE, 10, True, True)
 
     # 定义inception-v3的输入，images为输入图片，labels为每一张图片对应的标签。
     images = tf.placeholder(tf.float32, [None, 299, 299, 3], name='input_images')
@@ -131,7 +131,7 @@ def main():
                     labels: training_labels.asnumpy()})
         # 在最后的测试数据上测试正确率。
         test_accuracy = sess.run(evaluation_step, feed_dict={
-            images: validation_images, labels: validation_labels})
+            images: validation_images.asnumpy(), labels: validation_labels.asnumpy()})
         print('Final test accuracy = %.1f%%' % (test_accuracy * 100))
 
 
