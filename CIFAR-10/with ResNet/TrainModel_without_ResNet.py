@@ -10,7 +10,7 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
 TRAIN_EPOCH = 40
 EPOCH_OFFSET = 40
-LEARNING_RATE_BASE = 0.0005
+LEARNING_RATE_BASE = 0.001
 LEARNING_RATE_DECAY_STEP = 20000
 LEARNING_RATE_DECAY_RATE = 0.99
 REGULARIZATION_RATE = 1e-5
@@ -163,7 +163,7 @@ with tf.variable_scope("ResNet"):
     layer11_filter = tf.get_variable(name="layer11_filter",
                                      shape=[3, 3, 80, 128],
                                      initializer=tf.truncated_normal_initializer(stddev=0.1))
-    layer11_init = tf.nn.conv2d(input=pool2,
+    layer11_init = tf.nn.conv2d(input=dropout2,
                                 filter=layer11_filter,
                                 strides=[1, 1, 1, 1],
                                 padding="SAME")
@@ -305,7 +305,7 @@ with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
     reply_load = input('>>> Load model?(y/n): ')
     if reply_load == 'y':
-        saver.restore(sess, './.save/with ResNet/model.ckpt')
+        saver.restore(sess, './.save/without ResNet/model.ckpt')
         print("Model restored.")
     # load data set
     print(">>> Loading data set ... ", end='')
@@ -328,16 +328,16 @@ with tf.Session() as sess:
         break
     print("Finished ", timer.read())
     # summary
-    merge_summary_info = tf.summary.merge([tf.get_collection("summary_image"),
-                                           tf.get_collection("summary_histogram")])
+    merge_summary_image = tf.summary.merge([tf.get_collection("summary_image"), ])
+    merge_summary_histogram = tf.summary.merge([tf.get_collection("summary_histogram"), ])
     merge_summary_accuracy = tf.summary.merge([summary_accuracy])
     merge_summary_train_info = tf.summary.merge([summary_loss, summary_loss_cross_entropy,
                                                  summary_loss_regularization, summary_learning_rate]
                                                 + summary_grad)
     # write graph
-    writer = tf.summary.FileWriter("./.log/with ResNet/" + TIMESTAMP, tf.get_default_graph())
-    writer_train = tf.summary.FileWriter("./.log/with ResNet/" + TIMESTAMP + "/train")
-    writer_test = tf.summary.FileWriter("./.log/with ResNet/" + TIMESTAMP + "/test")
+    writer = tf.summary.FileWriter("./.log/without ResNet/" + TIMESTAMP + "/info", tf.get_default_graph())
+    writer_train = tf.summary.FileWriter("./.log/without ResNet/" + TIMESTAMP + "/train")
+    writer_test = tf.summary.FileWriter("./.log/without ResNet/" + TIMESTAMP + "/test")
 
     timer.reset()
     for i in range(TRAIN_EPOCH):
@@ -346,7 +346,7 @@ with tf.Session() as sess:
             # write summary
             counter = sess.run(global_step)
             if counter % SAVE_FREQUENCY == 0:
-                writer.add_summary(sess.run(merge_summary_info, feed_dict=test_feed_dict_sample),
+                writer.add_summary(sess.run(merge_summary_histogram, feed_dict=test_feed_dict_sample),
                                    global_step=counter)
                 writer_test.add_summary(sess.run(merge_summary_accuracy, feed_dict=test_feed_dict_sample),
                                         global_step=counter)
@@ -361,6 +361,9 @@ with tf.Session() as sess:
             a, run_summary_train_info = sess.run([train_step, merge_summary_train_info], feed_dict=train_feed_dict)
             # write grade
             writer.add_summary(run_summary_train_info, global_step=counter)
+        # write image
+        writer.add_summary(sess.run(merge_summary_image, feed_dict=test_feed_dict_sample),
+                           global_step=counter)
 
         # print each epoch
         print(">>> After {batch} step: ".format(batch=i + 1))
@@ -374,5 +377,5 @@ with tf.Session() as sess:
         print("Accuracy on train: {acc:.2f}% Accuracy on test: {acc_test:.2f}%".format(
             acc=sess.run(accuracy, feed_dict=train_feed_dict_sample) * 100,
             acc_test=sess.run(accuracy, feed_dict=test_feed_dict_sample) * 100))
-    # save model
-    saver.save(sess, './.save/with ResNet/model.ckpt')
+        # save model
+        saver.save(sess, './.save/without ResNet/model.ckpt')
