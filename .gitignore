@@ -1,10 +1,5 @@
-#==========================================================================
-
+# ide
 .vs/
-.dataset/
-.his/
-.model/
-*.csv
 
 # vscode settings
 .vscode/
@@ -12,7 +7,26 @@
 # pycharm settings
 .idea/
 
-#==========================================================================
+# pre trained model
+.ckpt/
+
+# data set
+.init_dataset/
+.dataset/
+*.csv
+
+# haar cascade classifier
+.haarcascade
+
+# log
+.his/
+.log/
+
+# saved model
+.model/
+.save/
+
+# =====
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
