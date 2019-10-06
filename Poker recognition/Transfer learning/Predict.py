@@ -9,9 +9,9 @@ import cv2.cv2 as cv2
 import os
 import Data_Augmentation as tool
 
-os.environ["CUDA_VISIBLE_DEVICES"] = '1'  # 指定第一块GPU可用
-config = tf.ConfigProto()
-config.gpu_options.per_process_gpu_memory_fraction = 0.001  # 程序最多只能占用指定gpu50%的显存
+# os.environ["CUDA_VISIBLE_DEVICES"] = '1'  # 指定第一块GPU可用
+# config = tf.ConfigProto()
+# config.gpu_options.per_process_gpu_memory_fraction = 0.001  # 程序最多只能占用指定gpu50%的显存
 
 STYLES = ["Clubs", "Diamonds", "Hearts", "Spades"]
 
@@ -22,21 +22,8 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import tensorflow.contrib.slim.python.slim.nets.inception_v3 as inception_v3
 
 # 保存训练的地址
-TRAIN_FILE = './.save/save_model'
-# 已训练好的模型参数
-CKPT_FILE = './.ckpt/inception_v3.ckpt'
-
-# 不从模型中加载的参数
-CHECKPOINT_EXCLUDE_SCOPES = 'InceptionV3/Logits,InceptionV3/AuxLogits'
-# 需要训练的网络层参数名称
-TRAINABLE_SCOPES = 'InceptionV3/Logits,InceptionV3/AuxLogits'
-
-LEARNING_RATE = 0.0002
-TRAIN_EPOCH = 20
-BATCH_SIZE = 4
-
-NUM_CLASS = 13
-
+TRAIN_FILE_SUIT = './.save/suit recognition/save_model'
+TRAIN_FILE_NUMBER = './.save/number recognition/save_model'
 
 # 从获取参数，确认那些参数需要加载
 def get_tuned_variables():
@@ -67,82 +54,93 @@ def get_trainable_variables():
 
 
 def main():
-    # 定义inception-v3的输入，images为输入图片，labels为每一张图片对应的标签。
-    images = tf.placeholder(tf.float32, [None, 299, 299, 3], name='input_images')
-    labels = tf.placeholder(tf.int64, [None], name='labels')
+    G1 = tf.Graph()
+    G2 = tf.Graph()
 
-    # 定义inception-v3模型。因为谷歌给出的只有模型参数取值，所以这里
-    # 需要在这个代码中定义inception-v3的模型结构。虽然理论上需要区分训练和
-    # 测试中使用到的模型，也就是说在测试时应该使用is_training=False，但是
-    # 因为预先训练好的inception-v3模型中使用的batch normalization参数与
-    # 新的数据会有出入，所以这里直接使用同一个模型来做测试。
-    with slim.arg_scope(inception_v3.inception_v3_arg_scope()):
-        logits, _ = inception_v3.inception_v3(images, num_classes=NUM_CLASS, is_training=True)
+    with G1.as_default():
+        NUM_CLASS = 4
+        # 定义inception-v3的输入，images为输入图片，labels为每一张图片对应的标签。
+        images1 = tf.placeholder(tf.float32, [None, 299, 299, 3], name='input_images')
 
-    trainable_variables = get_trainable_variables()
-    # 定义损失函数和训练过程。
-    tf.losses.softmax_cross_entropy(tf.one_hot(labels, NUM_CLASS), logits, weights=1.0)
-    total_loss = tf.losses.get_total_loss()
-    train_step = tf.train.RMSPropOptimizer(LEARNING_RATE).minimize(total_loss)
+        with slim.arg_scope(inception_v3.inception_v3_arg_scope()):
+            logits1, _ = inception_v3.inception_v3(images1, num_classes=NUM_CLASS, is_training=True)
 
-    softmaxed = tf.nn.softmax(logits)
+        softmaxed1 = tf.nn.softmax(logits1)
 
-    # 计算正确率。
-    with tf.name_scope('evaluation'):
-        correct_prediction = tf.equal(tf.argmax(logits, 1), labels)
-        evaluation_step = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+    with G2.as_default():
+        NUM_CLASS = 13
+        # 定义inception-v3的输入，images为输入图片，labels为每一张图片对应的标签。
+        images2 = tf.placeholder(tf.float32, [None, 299, 299, 3], name='input_images')
 
-    # 定义加载Google训练好的Inception-v3模型的Saver。
-    load_fn = slim.assign_from_checkpoint_fn(
-        CKPT_FILE,
-        get_tuned_variables(),
-        ignore_missing_vars=True)
+        with slim.arg_scope(inception_v3.inception_v3_arg_scope()):
+            logits2, _ = inception_v3.inception_v3(images2, num_classes=NUM_CLASS, is_training=True)
 
-    # 定义保存新模型的Saver。
-    saver = tf.train.Saver()
+        softmaxed2 = tf.nn.softmax(logits2)
 
-    with tf.Session() as sess:
-        # 初始化没有加载进来的变量。
-        init = tf.global_variables_initializer()
-        sess.run(init)
+    sess1 = tf.Session(graph=G1)
+    sess2 = tf.Session(graph=G2)
 
-        # 加载谷歌已经训练好的模型。
-        print('Loading tuned variables from %s' % CKPT_FILE)
-        load_fn(sess)
+    with sess1.as_default():
+        with G1.as_default():
+            saver = tf.train.Saver()
+            saver.restore(sess1, TRAIN_FILE_SUIT)
+    with sess2.as_default():
+        with G2.as_default():
+            saver = tf.train.Saver()
+            saver.restore(sess2, TRAIN_FILE_NUMBER)
+    print("Model restored.")
 
-        saver.restore(sess, TRAIN_FILE)
-        print("Model restored.")
+    print("Start recognize")
+    image_reader = image_io.ImgReader()
 
-        print("Start recognize")
-        image_reader = image_io.ImgReader()
+    # predict
+    counter1 = 0
+    counter2 = 0
+    record1 = 0
+    record2 = 0
+    txt = ""
+    while True:
+        _, image = image_reader.read(False)
+        image_print = cv2.putText(image,txt,(0,20),cv2.FONT_HERSHEY_PLAIN,2,(0,255,0),thickness=2)
+        cv2.imshow("Camera",image_print)
 
-        # predict
-        counter = 0
-        record = 0
-        while True:
-            _, image = image_reader.read(False)
+        image_resized = np.reshape(cv2.resize(image, (299, 299)), (1, 299, 299, 3))
+        image_resized = [tool.__contrast_img(image_resized[0], 1.0, 80)]
+        cv2.imshow("layer input", image_resized[0])
+        cv2.waitKey(1)
+        predict_logits_1 = sess1.run(softmaxed1, feed_dict={images1: image_resized})
+        predict_logits_2 = sess2.run(softmaxed2, feed_dict={images2: image_resized})
 
-            image_resized = np.reshape(cv2.resize(image, (299, 299)), (1, 299, 299, 3))
-            image_resized = [tool.__contrast_img(image_resized[0], 1.0, 40)]
-            cv2.imshow("input", image_resized[0])
-            cv2.waitKey(1)
-            predict_logits = sess.run(softmaxed, feed_dict={images: image_resized})
-            print(predict_logits[0], end="  ")
-            if max(predict_logits[0] > 0.3):
-                counter += 1
-                predict_num = np.argmax(predict_logits)
-                if counter > 3 and record == predict_num:
-                    # color = predict_num
-                    # number = predict_num - predict_num / 13 * 13 + 1
-                    # print(STYLES[int(color)])
-                    print(predict_num+1)
+        # suit
+        # print(predict_logits_1,predict_logits_2)
+        if max(predict_logits_1[0] > 0.9):
+            counter1 += 1
+            predict_num1 = np.argmax(predict_logits_1)
+            predict_num2 = np.argmax(predict_logits_2)
+            if counter1 > 3 and record1 == predict_num1:
+                # number
+                if max(predict_logits_2[0] > 0.3):
+                    counter2 += 1
+                    if counter2 > 3 and record2 == predict_num2:
+                        txt = str(STYLES[int(predict_num1)]+str(predict_num2.item() + 1))
+                        print(txt)
+                    else:
+                        txt = "N/A"
+                        print(txt)
+                    record2 = predict_num2
                 else:
-                    print("")
-                record = predict_num
+                    counter2 = 0
+                    txt = "N/A"
+                    print(txt)
             else:
-                counter = 0
-                print("")
-            pass
+                txt = "N/A"
+                print(txt)
+            record1 = predict_num1
+        else:
+            counter1 = 0
+            txt = "N/A"
+            print(txt)
+        pass
 
 
 if __name__ == '__main__':
