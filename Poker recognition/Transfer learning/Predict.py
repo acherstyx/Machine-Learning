@@ -24,18 +24,6 @@ import tensorflow.contrib.slim.python.slim.nets.inception_v3 as inception_v3
 # 保存训练的地址
 TRAIN_FILE_SUIT = './.save/suit recognition/save_model'
 TRAIN_FILE_NUMBER = './.save/number recognition/save_model'
-# 已训练好的模型参数
-CKPT_FILE = './.ckpt/inception_v3.ckpt'
-
-# 不从模型中加载的参数
-CHECKPOINT_EXCLUDE_SCOPES = 'InceptionV3/Logits,InceptionV3/AuxLogits'
-# 需要训练的网络层参数名称
-TRAINABLE_SCOPES = 'InceptionV3/Logits,InceptionV3/AuxLogits'
-
-LEARNING_RATE = 0.0002
-TRAIN_EPOCH = 20
-BATCH_SIZE = 4
-
 
 # 从获取参数，确认那些参数需要加载
 def get_tuned_variables():
@@ -108,32 +96,50 @@ def main():
     # predict
     counter1 = 0
     counter2 = 0
-    record = 0
-
+    record1 = 0
+    record2 = 0
+    txt = ""
     while True:
         _, image = image_reader.read(False)
+        image_print = cv2.putText(image,txt,(0,20),cv2.FONT_HERSHEY_PLAIN,2,(0,255,0),thickness=2)
+        cv2.imshow("Camera",image_print)
 
         image_resized = np.reshape(cv2.resize(image, (299, 299)), (1, 299, 299, 3))
         image_resized = [tool.__contrast_img(image_resized[0], 1.0, 80)]
-        cv2.imshow("input", image_resized[0])
+        cv2.imshow("layer input", image_resized[0])
         cv2.waitKey(1)
         predict_logits_1 = sess1.run(softmaxed1, feed_dict={images1: image_resized})
         predict_logits_2 = sess2.run(softmaxed2, feed_dict={images2: image_resized})
 
         # suit
         # print(predict_logits_1,predict_logits_2)
-        if max(predict_logits_1[0] > 0.8):
+        if max(predict_logits_1[0] > 0.9):
             counter1 += 1
             predict_num1 = np.argmax(predict_logits_1)
             predict_num2 = np.argmax(predict_logits_2)
             if counter1 > 3 and record1 == predict_num1:
-                print(STYLES[int(predict_num1)], predict_num2 + 1)
+                # number
+                if max(predict_logits_2[0] > 0.3):
+                    counter2 += 1
+                    if counter2 > 3 and record2 == predict_num2:
+                        txt = str(STYLES[int(predict_num1)]+str(predict_num2.item() + 1))
+                        print(txt)
+                    else:
+                        txt = "N/A"
+                        print(txt)
+                    record2 = predict_num2
+                else:
+                    counter2 = 0
+                    txt = "N/A"
+                    print(txt)
             else:
-                print("N/A")
+                txt = "N/A"
+                print(txt)
             record1 = predict_num1
         else:
             counter1 = 0
-            print("N/A")
+            txt = "N/A"
+            print(txt)
         pass
 
 

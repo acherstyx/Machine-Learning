@@ -64,7 +64,15 @@ def __brightness_img(img, b):
 def __rotate(img):
     rows, cols, _ = img.shape
 
-    M = cv2.getRotationMatrix2D((cols / 2, rows / 2), random.randint(-10,10), 0.9)
+    if random.random() < 0.25:
+        M = cv2.getRotationMatrix2D((cols / 2, rows / 2), 180 + random.randint(-10, 10), 0.9)
+    elif random.random() < 0.25:
+        M = cv2.getRotationMatrix2D((cols / 2, rows / 2), random.randint(-10, 10), 0.9)
+    elif random.random() < 0.25:
+        M = cv2.getRotationMatrix2D((cols / 2, rows / 2), 90 + random.randint(-10, 10), 0.9)
+    else:
+        M = cv2.getRotationMatrix2D((cols / 2, rows / 2), 270 + random.randint(-10, 10), 0.9)
+
     dst = cv2.warpAffine(img, M, (cols, rows))
     return dst
 
@@ -110,7 +118,7 @@ if __name__ == "__main__":
         for style_image, number in zip(style, range(13)):
             # pick a image and start to add to a background:
             index = 0
-            for i in range(2):
+            for i in range(1):
                 for background in background_img:
                     while True:
                         style_image_copy = cv2.resize(style_image, (random.randint(40, 200), random.randint(50, 200)))
