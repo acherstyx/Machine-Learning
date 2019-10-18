@@ -1,0 +1,9 @@
+# remove visual studio files
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+.vs/
+x64/
+
+*.jpg
