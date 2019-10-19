@@ -1,11 +1,12 @@
 #define _CRT_SECURE_NO_WARNINGS
+#define _USE_MATH_DEFINES
 #include <cstdio>
 #include <iostream>
 #include <algorithm>
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/highgui.hpp>
-
+#include <cmath>
 #include <opencv2/imgcodecs.hpp>
 
 using namespace cv;
@@ -130,7 +131,7 @@ min_r * split_image(Image img, int height = 3, int width = 3)
 	return split_head;
 }
 
-/*Region Packging
+/*Region Packaging
 Divide and encapsulate link list of min_region into single r
 without feature 
 */
@@ -142,7 +143,7 @@ vector<r> RegionPackgingPipline(min_r *minregion_linklist)
 	min_r * current = minregion_linklist;
 	while (current != NULL)
 	{
-		//preprocess
+		//preprocessing
 		next = current->next;
 		current->next = NULL;
 
@@ -162,11 +163,11 @@ void color_feature(r * InitRegionList, Image * img)
 {
 	// region position, size
 	min_r *region = InitRegionList->composition;
-	
-	// initialize color feature
-	for (int bin = 0; bin < 25; bin++)
-		InitRegionList->color[bin] = 0;
 	int bin;
+
+	// initialize color feature
+	for (bin = 0; bin < 25; bin++)
+		InitRegionList->color[bin] = 0;
 
 	for (int row = 0; row < region->size[0]; row++)
 	{
@@ -182,11 +183,51 @@ void color_feature(r * InitRegionList, Image * img)
 	return;
 }
 
+/*Calculate direction angle
+*/
+int __CalculateDirectionAngle_8bins(int channel, int x, int y, Image *img)
+{
+	if (0 != img->data[channel][x + 1][y] - img->data[channel][x - 1][y])
+		return atan((img->data[channel][x][y + 1] - img->data[channel][x - 1][y]) / (img->data[channel][x + 1][y] - img->data[channel][x - 1][y])) * 8 / M_PI + 4;
+	else
+	{
+		if (0 < img->data[channel][x][y + 1] - img->data[channel][x - 1][y])
+			return 7;
+		else
+			return 0;
+	}
+}
+
+int __CalculateMagnitude_10bins(int channel, int x, int y, Image * img)
+{
+	return sqrt(pow(img->data[channel][x + 1][y] - img->data[channel][x - 1][y], 2) + pow(img->data[channel][x][y + 1] - img->data[channel][x][y - 1], 2)) * 10 / sqrt(pow(2, 17));
+}
+
 /*Texture feature
 */
 void texture_feature(r * InitRegionList, Image * img)
 {
+	min_r *region = InitRegionList->composition;
+	int bin;
 
+	// initialize texture feature
+	for (int channel = 0; channel < 3; channel++)
+		for (int direction = 0; direction < 8; direction++)
+			for (int magnitude = 0; magnitude < 10; magnitude++)
+				InitRegionList->texture[channel][direction][magnitude] = 0;
+
+	for (int row = 0; row < region->size[0]; row++)
+	{
+		for (int col = 0; col < region->size[1]; col++)
+		{
+			for (int channel = 0; channel < 3; channel++)
+			{
+				// channel direction_angle weight
+				InitRegionList->texture[channel][__CalculateDirectionAngle_8bins(channel, region->position[0] + row, region->position[1] + col, img)][__CalculateMagnitude_10bins(channel, region->position[0] + row, region->position[1] + col, img)] += 1.0 / (InitRegionList->size);
+			}
+		}
+	}
+	
 }
 
 int main(void) {
@@ -194,7 +235,7 @@ int main(void) {
 	Mat image_out;
 	vector<vector<vector<uchar>>> image_array;
 	
-	printf("width£º%d height: %d\n", image_in.rows, image_in.cols);
+	printf("widths: %d height: %d\n", image_in.rows, image_in.cols);
 	
 	image_array = mat2vector(image_in);
 	Image init_image = { image_array,image_in.rows,image_in.cols };
@@ -211,7 +252,7 @@ int main(void) {
 	//}
 	//// cvt uchar array to mat
 	//image_out = vector2mat(image_array);
-	//imshow("Imgae in", image_in);
+	//imshow("Image in", image_in);
 	//imshow("image out", image_out);
 	//waitKey(5);
 	
@@ -232,7 +273,10 @@ int main(void) {
 	vector<r> split_region = RegionPackgingPipline(split_min_region);
 
 	for (int i = 0; i < split_region.size(); i++)
+	{
 		color_feature(&(split_region[i]), &init_image);
+		texture_feature(&(split_region[i]), &init_image);
+	}
 
 	//// color feature test case
 	//for (int i = 0; i < split_region.size(); i++)
@@ -244,12 +288,25 @@ int main(void) {
 	//	}
 	//	if (sum - 3 > 0.001 || sum - 3 < -0.001)
 	//	{
-	//		printf("%f", sum);
-	//		return -1;
+	//		return sum;
 	//	}
 	//}
 
+	//// texture feature test case
+	//for (int i = 0; i < split_region.size(); i++)
+	//{
+	//	double sum = 0.0;
+	//	r* InitRegionList = &split_region[i];
+	//	for (int channel = 0; channel < 3; channel++)
+	//		for (int direction = 0; direction < 8; direction++)
+	//			for (int magnitude = 0; magnitude < 10; magnitude++)
+	//				sum += InitRegionList->texture[channel][direction][magnitude];
 
+	//	if (sum - 3 > 0.0001 || sum - 3 < -0.0001)
+	//	{
+	//		return sum;
+	//	}
+	//}
 
 	return 0;
 }
