@@ -45,7 +45,7 @@ struct s
 /*Store image
 A simple image store struct
 */
-typedef struct image
+typedef struct Image
 {
 	vector<vector<vector<uchar>>> data;
 	int rows;
@@ -55,32 +55,45 @@ typedef struct image
 /*Convert 
 cv::Mat and std::vector
 In order to calculate the similarity, using data type uchar to store the image data.
+There is a blank border in four directions,
+So the first pixel of each row and col starts at 1
 */
 vector<vector<vector<uchar>>> mat2vector(Mat image_in)
 {
 	uchar * data_ptr = (uchar*)image_in.data;
 
-	vector<vector<vector<uchar>>> array(3, vector<vector<uchar>>(image_in.rows, vector<uchar>(image_in.cols)));
+	vector<vector<vector<uchar>>> array(3, vector<vector<uchar>>(image_in.rows + 2, vector<uchar>(image_in.cols + 2)));
+
+	// set for edge to empty
+	for (int c = 0; c < 3; c++)
+		for (int i = 0; i < image_in.rows + 2; i++)
+			array[c][i][0] = array[c][i][image_in.cols + 1] = 0;
+	for (int c = 0; c < 3; c++)
+		for (int i = 0; i < image_in.cols; i++)
+			array[c][0][i] = array[c][image_in.rows + 1][i] = 0;
 
 	for (int c = 0; c < 3; c++)
 		for (int i = 0; i < image_in.rows; i++)
 			for (int j = 0; j < image_in.cols; j++)
-				array[c][i][j] = data_ptr[c + 3 * i + 3 * image_in.rows*j];
+				array[c][i + 1][j + 1] = data_ptr[c + 3 * i + 3 * image_in.rows*j];
+
 	return array;
 }
 
-Mat vector2mat(vector<vector<vector<uchar>>> image_array, int cols, int rows)
+Mat vector2mat(vector<vector<vector<uchar>>> image_array)
 {
+	int rows = image_array[0].size() - 2;
+	int cols = image_array[0][0].size() - 2;
 	Mat img(rows, cols, CV_8UC3);
 	uchar * data_ptr = (uchar*)img.data;
 
-	for (int c = 0; c < 3; c++) 
+	for (int c = 0; c < 3; c++)
 	{
 		for (int i = 0; i < rows; i++)
 		{
 			for (int j = 0; j < cols; j++)
 			{
-				data_ptr[c+3*i + 3*rows * j] = image_array[c][i][j];
+				data_ptr[c + 3 * i + 3 * rows * j] = image_array[c][i + 1][j + 1];
 			}
 		}
 	}
@@ -91,7 +104,7 @@ Mat vector2mat(vector<vector<vector<uchar>>> image_array, int cols, int rows)
 Split a image into many small regions.
 Given a size of small region
 */
-min_r * split_image(image img, int height = 2, int width = 2)
+min_r * split_image(Image img, int height = 3, int width = 3)
 {
 	int h_split_num = ceil(img.rows / (float)height);
 	int w_split_num = ceil(img.cols / (float)width);
@@ -103,9 +116,9 @@ min_r * split_image(image img, int height = 2, int width = 2)
 	{
 		for (int j = 0; j < w_split_num; j++)
 		{
-			(*split)->position[0] = i * height;
-			(*split)->position[1] = j * width;
-			(*split)->size[0] = (i * height + height < img.rows) ? height : (img.rows -  i * height);
+			(*split)->position[0] = i * height + 1;
+			(*split)->position[1] = j * width + 1;
+			(*split)->size[0] = (i * height + height < img.rows) ? height : (img.rows - i * height);
 			(*split)->size[1] = (j * width + width < img.cols) ? width : (img.cols - j * width);
 			(*split)->next = new min_r;
 			split = &((*split)->next);
@@ -145,7 +158,7 @@ vector<r> RegionPackgingPipline(min_r *minregion_linklist)
 input: a region with only one min_region
 store the feature into InitRegionList
 */
-void color_feature(r * InitRegionList, image * img)
+void color_feature(r * InitRegionList, Image * img)
 {
 	// region position, size
 	min_r *region = InitRegionList->composition;
@@ -169,6 +182,13 @@ void color_feature(r * InitRegionList, image * img)
 	return;
 }
 
+/*Texture feature
+*/
+void texture_feature(r * InitRegionList, Image * img)
+{
+
+}
+
 int main(void) {
 	Mat image_in = imread("1.jpg");
 	Mat image_out;
@@ -177,60 +197,59 @@ int main(void) {
 	printf("width£º%d height: %d\n", image_in.rows, image_in.cols);
 	
 	image_array = mat2vector(image_in);
-	image init_image = { image_array,image_in.rows,image_in.cols };
+	Image init_image = { image_array,image_in.rows,image_in.cols };
 
-	/*
-	// mat2vector and vector2mat test case
-	// cvt mat to 2 dim uchar array
-	image_array = mat2vector(image_in);
-	for (int i = 0; i < image_in.rows; i++)
-	{
-		image_array[0][i][10] = image_array[0][i][11] = image_array[0][i][12] = 0;
-		image_array[1][i][10] = image_array[1][i][11] = image_array[1][i][12] = 0;
-		image_array[2][i][10] = image_array[2][i][11] = image_array[2][i][12] = 127;
-	}
-	// cvt uchar array to mat
-	image_out = vector2mat(image_array,1024,1024);
-	imshow("Imgae in", image_in);
-	imshow("image out", image_out);
-	waitKey(5);
-	*/
+	
+	//// mat2vector and vector2mat test case
+	//// cvt mat to 2 dim uchar array
+	//image_array = mat2vector(image_in);
+	//for (int i = 0; i < image_in.rows; i++)
+	//{
+	//	image_array[0][i][10] = image_array[0][i][11] = image_array[0][i][12] = 0;
+	//	image_array[1][i][10] = image_array[1][i][11] = image_array[1][i][12] = 0;
+	//	image_array[2][i][10] = image_array[2][i][11] = image_array[2][i][12] = 127;
+	//}
+	//// cvt uchar array to mat
+	//image_out = vector2mat(image_array);
+	//imshow("Imgae in", image_in);
+	//imshow("image out", image_out);
+	//waitKey(5);
+	
 
 	min_r * split_min_region = split_image(init_image,3,3);
 
-	/*
-	// split region test case
-	min_r * current = split_region;
-	int count = 0;
-	while (current != NULL)
-	{
-		printf("%d: %d %d %d %d\n", count, current->position[0], current->position[1], current->size[0], current->size[1]);
-		count++;
-		current = current->next;
-	}
-	*/
-
+	
+	//// split region test case
+	//min_r * current = split_min_region;
+	//int count = 0;
+	//while (current != NULL)
+	//{
+	//	printf("%d: %d %d %d %d\n", count, current->position[0], current->position[1], current->size[0], current->size[1]);
+	//	count++;
+	//	current = current->next;
+	//}
+	
 	vector<r> split_region = RegionPackgingPipline(split_min_region);
 
 	for (int i = 0; i < split_region.size(); i++)
 		color_feature(&(split_region[i]), &init_image);
 
-	/*
-	// color feature test case
-	for (int i = 0; i < split_region.size(); i++)
-	{
-		float sum = 0.0;
-		for (int ii = 0; ii < 25; ii++)
-		{
-			sum += split_region[i].color[ii];
-		}
-		if (sum - 3 > 0.001 || sum - 3 < -0.001)
-		{
-			printf("%f", sum);
-			return -1;
-		}
-	}
-	*/
+	//// color feature test case
+	//for (int i = 0; i < split_region.size(); i++)
+	//{
+	//	float sum = 0.0;
+	//	for (int ii = 0; ii < 25; ii++)
+	//	{
+	//		sum += split_region[i].color[ii];
+	//	}
+	//	if (sum - 3 > 0.001 || sum - 3 < -0.001)
+	//	{
+	//		printf("%f", sum);
+	//		return -1;
+	//	}
+	//}
+
+
 
 	return 0;
 }
