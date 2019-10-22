@@ -28,9 +28,9 @@ Also has the feature array of this series of region
 typedef struct r
 {
 	min_r* composition;	// static array ptr
-	int size = 1;	// area
-	float color[25];			// 25 bin
-	float texture[3][8][10];	// 240 bin
+	int feat_size = 1;	// area
+	float feat_color[25];			// 25 bin
+	float feat_texture[3][8][10];	// 240 bin
 }r;
 
 /*Record similarity
@@ -41,6 +41,10 @@ struct s
 	int similarity;
 	r* ri;
 	r* rj;
+	float s_color;
+	float s_texture;
+	float s_size;
+	float s_distance;
 };
 
 /*Store image
@@ -148,7 +152,7 @@ vector<r> RegionPackgingPipline(min_r *minregion_linklist)
 		current->next = NULL;
 
 		temp.composition = current;
-		temp.size = current->size[0] * current->size[1];
+		temp.feat_size = current->size[0] * current->size[1];
 		region_list.push_back(temp);
 		current = next;
 	}
@@ -159,7 +163,7 @@ vector<r> RegionPackgingPipline(min_r *minregion_linklist)
 input: a region with only one min_region
 store the feature into InitRegionList
 */
-void color_feature(r * InitRegionList, Image * img)
+void feature_color(r * InitRegionList, Image * img)
 {
 	// region position, size
 	min_r *region = InitRegionList->composition;
@@ -167,7 +171,7 @@ void color_feature(r * InitRegionList, Image * img)
 
 	// initialize color feature
 	for (bin = 0; bin < 25; bin++)
-		InitRegionList->color[bin] = 0;
+		InitRegionList->feat_color[bin] = 0;
 
 	for (int row = 0; row < region->size[0]; row++)
 	{
@@ -176,7 +180,7 @@ void color_feature(r * InitRegionList, Image * img)
 			for (int channel = 0; channel < 3; channel++)
 			{
 				bin = img->data[channel][region->position[0] + row][region->position[1] + col] * 25 / 256;
-				InitRegionList->color[bin]+=1.0/(InitRegionList->size);
+				InitRegionList->feat_color[bin]+=1.0/(InitRegionList->feat_size);
 			}
 		}
 	}
@@ -184,12 +188,13 @@ void color_feature(r * InitRegionList, Image * img)
 }
 
 /*Calculate direction angle
+return 8 bins int value
 */
 int __CalculateDirectionAngle_8bins(int channel, int x, int y, Image *img)
 {
 	if (0 != img->data[channel][x + 1][y] - img->data[channel][x - 1][y])
 		return atan((img->data[channel][x][y + 1] - img->data[channel][x - 1][y]) / (img->data[channel][x + 1][y] - img->data[channel][x - 1][y])) * 8 / M_PI + 4;
-	else
+	else // avoid divide 0 error
 	{
 		if (0 < img->data[channel][x][y + 1] - img->data[channel][x - 1][y])
 			return 7;
@@ -198,6 +203,9 @@ int __CalculateDirectionAngle_8bins(int channel, int x, int y, Image *img)
 	}
 }
 
+/*Calculate Magnitude
+return 10 bins int value
+*/
 int __CalculateMagnitude_10bins(int channel, int x, int y, Image * img)
 {
 	return sqrt(pow(img->data[channel][x + 1][y] - img->data[channel][x - 1][y], 2) + pow(img->data[channel][x][y + 1] - img->data[channel][x][y - 1], 2)) * 10 / sqrt(pow(2, 17));
@@ -205,7 +213,7 @@ int __CalculateMagnitude_10bins(int channel, int x, int y, Image * img)
 
 /*Texture feature
 */
-void texture_feature(r * InitRegionList, Image * img)
+void feature_texture(r * InitRegionList, Image * img)
 {
 	min_r *region = InitRegionList->composition;
 	int bin;
@@ -214,7 +222,7 @@ void texture_feature(r * InitRegionList, Image * img)
 	for (int channel = 0; channel < 3; channel++)
 		for (int direction = 0; direction < 8; direction++)
 			for (int magnitude = 0; magnitude < 10; magnitude++)
-				InitRegionList->texture[channel][direction][magnitude] = 0;
+				InitRegionList->feat_texture[channel][direction][magnitude] = 0;
 
 	for (int row = 0; row < region->size[0]; row++)
 	{
@@ -223,11 +231,167 @@ void texture_feature(r * InitRegionList, Image * img)
 			for (int channel = 0; channel < 3; channel++)
 			{
 				// channel direction_angle weight
-				InitRegionList->texture[channel][__CalculateDirectionAngle_8bins(channel, region->position[0] + row, region->position[1] + col, img)][__CalculateMagnitude_10bins(channel, region->position[0] + row, region->position[1] + col, img)] += 1.0 / (InitRegionList->size);
+				InitRegionList->feat_texture[channel][__CalculateDirectionAngle_8bins(channel, region->position[0] + row, region->position[1] + col, img)][__CalculateMagnitude_10bins(channel, region->position[0] + row, region->position[1] + col, img)] += 1.0 / (InitRegionList->feat_size);
 			}
 		}
 	}
 	
+}
+
+/*Color similarity
+*/
+void similarity_color(s * similarity, Image * img)
+{
+	r * region_1 = similarity->ri;
+	r * region_2 = similarity->rj;
+
+	float sum = 0;
+
+	for (int i = 0; i < 25; i++)
+		sum += min(region_1->feat_color[i], region_2->feat_color[i]);
+
+	similarity->s_color = sum;
+}
+
+/*Texture similarity
+*/
+void similarity_texture(s* similarity, Image * img)
+{
+	r* region_1;
+	r* region_2;
+
+	float sum = 0;
+
+	for (int channel = 0; channel < 3; channel++)
+		for (int direction = 0; direction < 8; direction++)
+			for (int weight = 0; weight < 8; weight++)
+				min(region_1->feat_texture[channel][direction][weight], region_2->feat_texture[channel][direction][weight]);
+
+	similarity->s_texture = sum;
+}
+
+/*Size similarity
+Give smaller areas a higher weight
+*/
+void similarity_size(s * similarity, Image * img)
+{
+	r * region_1 = similarity->ri;
+	r * region_2 = similarity->rj;
+
+	similarity->s_size = 1 - float(region_1->feat_size*region_2->feat_size) / (img->rows*img->cols);
+}
+
+/*Distance similarity 
+*/
+void similarity_distance(s * similarity, Image * img)
+{
+	min_r * current;
+
+	r* region_1 = similarity->ri;
+	r* region_2 = similarity->rj;
+
+	int left = img->cols;
+	int right = 0;
+	int upper = img->rows;
+	int lower = 0;
+
+	current = region_1->composition;
+	while (current != NULL)
+	{
+		left = current->position[1] < left ? current->position[1] : left;
+		current = current->next;
+	}
+	current = region_2->composition;
+	while (current != NULL)
+	{
+		left = current->position[1] < left ? current->position[1] : left;
+		current = current->next;
+	}
+	current = region_1->composition;
+	while (current != NULL)
+	{
+		right = current->position[1] + current->size[1] > right ? current->position[1] + current->size[1] : right;
+		current = current->next;
+	}
+	current = region_2->composition;
+	while (current != NULL)
+	{
+		right = current->position[1] + current->size[1] > right ? current->position[1] + current->size[1] : right;
+		current = current->next;
+	}
+	current = region_1->composition;
+	while (current != NULL)
+	{
+		upper = current->position[0] < upper ? current->position[0] : upper;
+		current = current->next;
+	}
+	current = region_2->composition;
+	while (current != NULL)
+	{
+		upper = current->position[0] < upper ? current->position[0] : upper;
+		current = current->next;
+	}
+	current = region_1->composition;
+	while (current != NULL)
+	{
+		lower = current->position[0] + current->size[0] > lower ? current->position[0] + current->size[0] : lower;
+		current = current->next;
+	}
+	current = region_2->composition;
+	while (current != NULL)
+	{
+		lower = current->position[0] + current->size[0] > lower ? current->position[0] + current->size[0] : lower;
+		current = current->next;
+	}
+
+	float size_include = (right - left)*(lower - upper);
+
+	similarity->s_distance = 1 - (size_include - region_1->feat_size - region_2->feat_size) / (img->rows*img->cols);
+}
+
+/*Merge color feature
+*/
+void merge_color(r * r1,r * r2,r* dist)
+{
+	for (int bin = 0; bin < 25; bin++)
+	{
+		dist->feat_color[bin] = (r1->feat_size*r1->feat_color[bin] + r2->feat_size*r2->feat_color[bin]) / (r1->feat_size + r2->feat_size);
+	}
+}
+
+/*Merge texture feature
+*/
+void merge_texture(r * r1, r* r2, r* dist)
+{
+	for (int channel = 0; channel < 3; channel++)
+		for (int direction = 0; direction < 8; direction++)
+			for (int weight = 0; weight < 10; weight++)
+				dist->feat_texture[channel][direction][weight] = \
+				(r1->feat_size*r1->feat_texture[channel][direction][weight] + r2->feat_size*r2->feat_texture[channel][direction][weight]) / (r1->feat_size + r2->feat_size);
+}
+
+/*Merge size feature
+Calculate the size of region group 
+*/
+void merge_size(r* r1, r* r2, r* dist)
+{
+	dist->feat_size = r1->feat_size + r2->feat_size;
+}
+
+/*Merge region
+merge two region group into a single one
+the source region will be delete
+the distance should have allocated memory*/
+void merge_region(r* r1, r* r2, r* dist)
+{
+	min_r ** current = &(r1->composition);
+
+	dist->composition = r1->composition;
+	while (*current != NULL)
+		current = &((*current)->next);
+	*current = r2->composition;
+	delete r1;
+	delete r2;
 }
 
 int main(void) {
@@ -239,10 +403,8 @@ int main(void) {
 	
 	image_array = mat2vector(image_in);
 	Image init_image = { image_array,image_in.rows,image_in.cols };
-
-	
 	//// mat2vector and vector2mat test case
-	//// cvt mat to 2 dim uchar array
+	//// convert mat to 2 dim uchar array
 	//image_array = mat2vector(image_in);
 	//for (int i = 0; i < image_in.rows; i++)
 	//{
@@ -250,16 +412,13 @@ int main(void) {
 	//	image_array[1][i][10] = image_array[1][i][11] = image_array[1][i][12] = 0;
 	//	image_array[2][i][10] = image_array[2][i][11] = image_array[2][i][12] = 127;
 	//}
-	//// cvt uchar array to mat
+	//// convert uchar array to mat
 	//image_out = vector2mat(image_array);
 	//imshow("Image in", image_in);
 	//imshow("image out", image_out);
 	//waitKey(5);
 	
-
 	min_r * split_min_region = split_image(init_image,3,3);
-
-	
 	//// split region test case
 	//min_r * current = split_min_region;
 	//int count = 0;
@@ -272,25 +431,27 @@ int main(void) {
 	
 	vector<r> split_region = RegionPackgingPipline(split_min_region);
 
+	// Get init feature
 	for (int i = 0; i < split_region.size(); i++)
 	{
-		color_feature(&(split_region[i]), &init_image);
-		texture_feature(&(split_region[i]), &init_image);
+		feature_color(&(split_region[i]), &init_image);
+		feature_texture(&(split_region[i]), &init_image);
 	}
-
 	//// color feature test case
 	//for (int i = 0; i < split_region.size(); i++)
 	//{
 	//	float sum = 0.0;
 	//	for (int ii = 0; ii < 25; ii++)
 	//	{
-	//		sum += split_region[i].color[ii];
+	//		sum += split_region[i].feat_color[ii];
 	//	}
 	//	if (sum - 3 > 0.001 || sum - 3 < -0.001)
 	//	{
 	//		return sum;
 	//	}
 	//}
+
+	
 
 	//// texture feature test case
 	//for (int i = 0; i < split_region.size(); i++)
@@ -300,8 +461,7 @@ int main(void) {
 	//	for (int channel = 0; channel < 3; channel++)
 	//		for (int direction = 0; direction < 8; direction++)
 	//			for (int magnitude = 0; magnitude < 10; magnitude++)
-	//				sum += InitRegionList->texture[channel][direction][magnitude];
-
+	//				sum += InitRegionList->feat_texture[channel][direction][magnitude];
 	//	if (sum - 3 > 0.0001 || sum - 3 < -0.0001)
 	//	{
 	//		return sum;
