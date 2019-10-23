@@ -28,9 +28,10 @@ Also has the feature array of this series of region
 typedef struct r
 {
 	min_r* composition;	// static array ptr
-	int feat_size = 1;	// area
-	float feat_color[25];			// 25 bin
-	float feat_texture[3][8][10];	// 240 bin
+	short feat_size = 1;	// area
+	float feat_color[25] = { 0, };			// 25 bin
+	float feat_texture[3][8][10] = { 0, };	// 240 bin
+	short feat_distance[4] = { 0, };	// left upper right lower
 }r;
 
 /*Record similarity
@@ -38,7 +39,7 @@ Have the pointer towards r, to access the relative data and calc. similarity
 */
 struct s
 {
-	int similarity;
+	short similarity;
 	r* ri;
 	r* rj;
 	float s_color;
@@ -139,7 +140,7 @@ min_r * split_image(Image img, int height = 3, int width = 3)
 Divide and encapsulate link list of min_region into single r
 without feature 
 */
-vector<r> RegionPackgingPipline(min_r *minregion_linklist)
+vector<r> PipelineRegionPackging(min_r *minregion_linklist)
 {
 	vector<r> region_list;
 	r temp;
@@ -152,11 +153,15 @@ vector<r> RegionPackgingPipline(min_r *minregion_linklist)
 		current->next = NULL;
 
 		temp.composition = current;
-		temp.feat_size = current->size[0] * current->size[1];
 		region_list.push_back(temp);
 		current = next;
 	}
 	return region_list;
+}
+
+void feature_size(r* InitRegionList)
+{
+	InitRegionList->feat_size = InitRegionList->composition->size[0] * InitRegionList->composition->size[1];
 }
 
 /*calc color feature
@@ -168,10 +173,6 @@ void feature_color(r * InitRegionList, Image * img)
 	// region position, size
 	min_r *region = InitRegionList->composition;
 	int bin;
-
-	// initialize color feature
-	for (bin = 0; bin < 25; bin++)
-		InitRegionList->feat_color[bin] = 0;
 
 	for (int row = 0; row < region->size[0]; row++)
 	{
@@ -218,12 +219,6 @@ void feature_texture(r * InitRegionList, Image * img)
 	min_r *region = InitRegionList->composition;
 	int bin;
 
-	// initialize texture feature
-	for (int channel = 0; channel < 3; channel++)
-		for (int direction = 0; direction < 8; direction++)
-			for (int magnitude = 0; magnitude < 10; magnitude++)
-				InitRegionList->feat_texture[channel][direction][magnitude] = 0;
-
 	for (int row = 0; row < region->size[0]; row++)
 	{
 		for (int col = 0; col < region->size[1]; col++)
@@ -238,36 +233,14 @@ void feature_texture(r * InitRegionList, Image * img)
 	
 }
 
-/*Color similarity
-*/
-void similarity_color(s * similarity, Image * img)
+/*Distance feature
+get 4 boundary of the whole region*/
+void feature_distance(r * InitRegionList)
 {
-	r * region_1 = similarity->ri;
-	r * region_2 = similarity->rj;
-
-	float sum = 0;
-
-	for (int i = 0; i < 25; i++)
-		sum += min(region_1->feat_color[i], region_2->feat_color[i]);
-
-	similarity->s_color = sum;
-}
-
-/*Texture similarity
-*/
-void similarity_texture(s* similarity, Image * img)
-{
-	r* region_1;
-	r* region_2;
-
-	float sum = 0;
-
-	for (int channel = 0; channel < 3; channel++)
-		for (int direction = 0; direction < 8; direction++)
-			for (int weight = 0; weight < 8; weight++)
-				min(region_1->feat_texture[channel][direction][weight], region_2->feat_texture[channel][direction][weight]);
-
-	similarity->s_texture = sum;
+	InitRegionList->feat_distance[0] = InitRegionList->composition->position[1];
+	InitRegionList->feat_distance[1] = InitRegionList->composition->position[0];
+	InitRegionList->feat_distance[2] = InitRegionList->composition->position[1] + InitRegionList->composition->size[1];
+	InitRegionList->feat_distance[3] = InitRegionList->composition->position[0] + InitRegionList->composition->size[0];
 }
 
 /*Size similarity
@@ -275,78 +248,73 @@ Give smaller areas a higher weight
 */
 void similarity_size(s * similarity, Image * img)
 {
-	r * region_1 = similarity->ri;
-	r * region_2 = similarity->rj;
+	similarity->s_size = 1.0 - float(similarity->ri->feat_size*similarity->rj->feat_size) / (img->rows*img->cols);
+}
 
-	similarity->s_size = 1 - float(region_1->feat_size*region_2->feat_size) / (img->rows*img->cols);
+/*Color similarity
+*/
+void similarity_color(s * similarity)
+{
+	similarity->s_color = 0;
+
+	for (int i = 0; i < 25; i++)
+		similarity->s_color += min(similarity->ri->feat_color[i], similarity->rj->feat_color[i]);
+}
+
+/*Texture similarity
+*/
+void similarity_texture(s* similarity)
+{
+	similarity->s_texture = 0;
+
+	for (int channel = 0; channel < 3; channel++)
+		for (int direction = 0; direction < 8; direction++)
+			for (int weight = 0; weight < 8; weight++)
+				similarity->s_texture += min(similarity->ri->feat_texture[channel][direction][weight], similarity->rj->feat_texture[channel][direction][weight]);
 }
 
 /*Distance similarity 
 */
-void similarity_distance(s * similarity, Image * img)
+void similarity_distance(s * similarity,Image * img)
 {
 	min_r * current;
 
 	r* region_1 = similarity->ri;
 	r* region_2 = similarity->rj;
 
-	int left = img->cols;
-	int right = 0;
-	int upper = img->rows;
-	int lower = 0;
-
-	current = region_1->composition;
-	while (current != NULL)
-	{
-		left = current->position[1] < left ? current->position[1] : left;
-		current = current->next;
-	}
-	current = region_2->composition;
-	while (current != NULL)
-	{
-		left = current->position[1] < left ? current->position[1] : left;
-		current = current->next;
-	}
-	current = region_1->composition;
-	while (current != NULL)
-	{
-		right = current->position[1] + current->size[1] > right ? current->position[1] + current->size[1] : right;
-		current = current->next;
-	}
-	current = region_2->composition;
-	while (current != NULL)
-	{
-		right = current->position[1] + current->size[1] > right ? current->position[1] + current->size[1] : right;
-		current = current->next;
-	}
-	current = region_1->composition;
-	while (current != NULL)
-	{
-		upper = current->position[0] < upper ? current->position[0] : upper;
-		current = current->next;
-	}
-	current = region_2->composition;
-	while (current != NULL)
-	{
-		upper = current->position[0] < upper ? current->position[0] : upper;
-		current = current->next;
-	}
-	current = region_1->composition;
-	while (current != NULL)
-	{
-		lower = current->position[0] + current->size[0] > lower ? current->position[0] + current->size[0] : lower;
-		current = current->next;
-	}
-	current = region_2->composition;
-	while (current != NULL)
-	{
-		lower = current->position[0] + current->size[0] > lower ? current->position[0] + current->size[0] : lower;
-		current = current->next;
-	}
+	int left = min(region_1->feat_distance[0], region_2->feat_distance[0]);
+	int upper = min(region_1->feat_distance[1], region_2->feat_distance[1]);
+	int right = max(region_1->feat_distance[2], region_2->feat_distance[2]);
+	int lower = max(region_1->feat_distance[3], region_2->feat_distance[3]);
 
 	float size_include = (right - left)*(lower - upper);
 
 	similarity->s_distance = 1 - (size_include - region_1->feat_size - region_2->feat_size) / (img->rows*img->cols);
+}
+
+/*Similarity calculate pipeline
+Calculate the init similarity of the all small region*/
+vector<s> PipelineSimilarityCalculation(vector<r> RegionList, Image * img)
+{
+	vector<s> Similarity;
+	s temp;
+	int size = RegionList.size();
+	for (int i = 0; i < size-1; i++)
+	{
+		for (int ii = i + 1; ii < size; ii++)
+		{
+			temp.ri = &(RegionList[i]);
+			temp.rj = &(RegionList[ii]);
+
+			similarity_size(&temp, img);
+			similarity_color(&temp);
+			similarity_texture(&temp);
+			similarity_distance(&temp, img);
+
+			Similarity.push_back(temp);
+		}
+	}
+	return Similarity;
 }
 
 /*Merge color feature
@@ -378,6 +346,16 @@ void merge_size(r* r1, r* r2, r* dist)
 	dist->feat_size = r1->feat_size + r2->feat_size;
 }
 
+/*Merge the distance of two region
+*/
+void merge_distance(r* r1, r* r2, r* dist)
+{
+	dist->feat_distance[0] = min(r1->feat_distance[0], r2->feat_distance[0]);
+	dist->feat_distance[1] = min(r1->feat_distance[1], r2->feat_distance[1]);
+	dist->feat_distance[2] = max(r1->feat_distance[2], r2->feat_distance[2]);
+	dist->feat_distance[3] = max(r1->feat_distance[3], r2->feat_distance[3]);
+}
+
 /*Merge region
 merge two region group into a single one
 the source region will be delete
@@ -394,8 +372,12 @@ void merge_region(r* r1, r* r2, r* dist)
 	delete r2;
 }
 
+
 int main(void) {
-	Mat image_in = imread("1.jpg");
+	//FILE * open_file = fopen("name.txt", "w");
+	//fprintf(open_file, "Text");
+
+	Mat image_in = imread("./1.jpg");
 	Mat image_out;
 	vector<vector<vector<uchar>>> image_array;
 	
@@ -418,7 +400,7 @@ int main(void) {
 	//imshow("image out", image_out);
 	//waitKey(5);
 	
-	min_r * split_min_region = split_image(init_image,3,3);
+	min_r * split_min_region = split_image(init_image,4,4);
 	//// split region test case
 	//min_r * current = split_min_region;
 	//int count = 0;
@@ -429,13 +411,15 @@ int main(void) {
 	//	current = current->next;
 	//}
 	
-	vector<r> split_region = RegionPackgingPipline(split_min_region);
+	vector<r> split_region = PipelineRegionPackging(split_min_region);
 
 	// Get init feature
 	for (int i = 0; i < split_region.size(); i++)
 	{
+		feature_size(&(split_region[i]));
 		feature_color(&(split_region[i]), &init_image);
 		feature_texture(&(split_region[i]), &init_image);
+		feature_distance(&(split_region[i]));
 	}
 	//// color feature test case
 	//for (int i = 0; i < split_region.size(); i++)
@@ -450,9 +434,6 @@ int main(void) {
 	//		return sum;
 	//	}
 	//}
-
-	
-
 	//// texture feature test case
 	//for (int i = 0; i < split_region.size(); i++)
 	//{
@@ -467,6 +448,12 @@ int main(void) {
 	//		return sum;
 	//	}
 	//}
+
+	vector<s> similarity = PipelineSimilarityCalculation(split_region, &init_image);
+	similarity.shrink_to_fit();
+
+	//similarity.clear();
+	//similarity.shrink_to_fit();
 
 	return 0;
 }
