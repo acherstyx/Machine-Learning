@@ -16,19 +16,24 @@ import random
 def data_augmentation(image_list, size_cut):
     image_out = []
     for image in image_list:
-        augmenter = mx.image.CreateAugmenter(data_shape=(3, 32, 32),
-                                             rand_gray=random.random() * 0.2,
+        augmenter = mx.image.CreateAugmenter(data_shape=(3, 32,32),
+                                             rand_gray=0.2,
                                              rand_mirror=True,
-                                             brightness=random.random() * 0.5,
-                                             contrast=random.random() * 0.8,
-                                             saturation=random.random() * 0.4,
-                                             pca_noise=random.random() * 0.8,
+                                             brightness=random.random() * 0.5 - 0.25,
+                                             contrast=random.random() * 0.8 - 0.4,
+                                             saturation=random.random() * 0.4 - 0.2,
+                                             pca_noise=random.random() * 0.8 - 0.4,
                                              )
         temp = nd.array(image)
         for aug in augmenter:
             temp = aug(temp)
         temp.transpose((2, 0, 1))
         image_out.append(temp.asnumpy())
+        plt.figure(1)
+        plt.imshow(image.asnumpy()/256)
+        plt.figure(2)
+        plt.imshow(temp.asnumpy()/256)
+        plt.show()
     return nd.array(image_out)
 
 
@@ -83,7 +88,7 @@ class CIFAR10:
 
 def Create_dataloader(path, train_batch_size, test_batch_size, shuffle=True, dataAug=True):
     data_set = CIFAR10(path)
-    transform = lambda data, label: (data.astype(np.float32) / 255, label)
+    transform = lambda data, label: (data.astype(np.float32) / 256, label)
     # test data loader
     test_data_set = gdata.ArrayDataset(nd.array(data_set.Test["image"]), nd.array(data_set.Test['label']))
     test_loader = gdata.DataLoader(test_data_set.transform(transform),
