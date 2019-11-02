@@ -6,6 +6,7 @@ import random
 import Config as cfg
 import os
 import time
+import tensorflow as tf
 
 PASCAL_VOC_PATH = "./VOCdevkit/"
 
@@ -17,7 +18,9 @@ class PascalVOC:
         self.AnnotationPath = cfg.AnnotationsPath
         # image settings
         self.ImageSize = cfg.ImageSize
-        self.CellNum = cfg.CellSize
+        self.CellNum = cfg.CellNum
+        self.CellSize = cfg.CellSize
+        self.CellEach = int(cfg.ImageSize / cfg.CellSize)
         self.Classes = cfg.Classes
         self.ClassesDict = cfg.ClassesDict
         # path to save data
@@ -34,7 +37,7 @@ class PascalVOC:
         self.TrainImageList = self.ImageList[:self.TrainNum]
         self.ValImageList = self.ImageList[self.TrainNum:]
 
-        if os.path.isfile(self.SaveTrain) and os.path.isfile(self.SaveVal):
+        if cfg.LoadSavedData and os.path.isfile(self.SaveTrain) and os.path.isfile(self.SaveVal):
             self.TrainData = self.__LoadPickle__(self.SaveTrain)
             self.ValData = self.__LoadPickle__(self.SaveVal)
         else:
@@ -78,7 +81,7 @@ class PascalVOC:
     def __LoadLabel__(self, image_name):
         AnnotationPath = os.path.join(self.AnnotationPath, image_name + ".xml")
 
-        label = np.zeros((self.CellNum, self.CellNum, 6))
+        label = np.zeros((self.CellEach, self.CellEach, 6))
 
         XMLTree = ET.parse(AnnotationPath)
         Objects = XMLTree.findall("object")
@@ -101,27 +104,56 @@ class PascalVOC:
             class_id = self.ClassesDict[Object.find("name").text.lower().strip()]
             BoxInfo = [(x1 + x2) / 2.0, (y1 + y2) / 2.0, x2 - x1, y2 - y1]
 
-            Cell_x = int(BoxInfo[0] * self.CellNum / self.ImageSize)
-            Cell_y = int(BoxInfo[1] * self.CellNum / self.ImageSize)
+            Cell_x = int(BoxInfo[0] * self.CellEach / self.ImageSize)
+            Cell_y = int(BoxInfo[1] * self.CellEach / self.ImageSize)
 
             if label[Cell_x, Cell_y, 0] == 1:  # this cell already has an object
                 continue
             else:
                 ObjectCount += 1
-                # format: hasObject[0] boxinfo[1:5] class_id[5]
-                label[Cell_x, Cell_y, 0] = 1
-                label[Cell_x, Cell_y, 1:5] = BoxInfo
-                label[Cell_x, Cell_y, 5] = class_id
+            # format: hasObject[0] boxinfo[1:5] class_id[5]
+            label[Cell_x, Cell_y, 4] = 1
+            label[Cell_x, Cell_y, 0:4] = [i / cfg.ImageSize for i in BoxInfo]
+            label[Cell_x, Cell_y, 5] = class_id
 
         return label, ObjectCount
+
+    def next_batch_train(self, batch_size):
+        for i in range(batch_size, self.TrainNum, batch_size):
+            batch_img = []
+            batch_label = []
+            batch_data = self.TrainData[i - batch_size: i]
+            for single_sample in batch_data:
+                batch_img.append(cv.resize(cv.imread(single_sample["ImagePath"]), (448, 448)))
+                batch_label.append(single_sample["Label"])
+            batch_img = np.array(batch_img)
+            batch_label = np.array(batch_label)
+            yield ({"image": np.array(batch_img, dtype=np.float)}, {"output": np.array(batch_label)})
+
+    def val_generator(self, batch_size):
+        for i in range(batch_size, self.ValNum, batch_size):
+            batch_img = []
+            batch_label = []
+            batch_data = self.ValData[i - batch_size: i]
+            for single_sample in batch_data:
+                batch_img.append(cv.resize(cv.imread(single_sample["ImagePath"]), (448, 448)))
+                batch_label.append(single_sample["Label"])
+            batch_img = np.array(batch_img)
+            batch_label = np.array(batch_label)
+            yield ({"image": np.array(batch_img, dtype=np.float)}, {"output": np.array(batch_label)})
 
 
 if __name__ == "__main__":
     data = PascalVOC()
 
+    train_iter = data.next_batch_train(10)
+
+    for image, label in train_iter:
+        print("Data shape:", np.shape(image["image"]), np.shape(label["output"]))
+        break
+
     # get image sample
     index = int(input("Index of image to show: "))
-
     while True:
         sample = data.TrainData[index]
         image_path = sample["ImagePath"]
@@ -130,22 +162,22 @@ if __name__ == "__main__":
         image = cv.imread(image_path)
         image = cv.resize(image, (448, 448))
         cv.putText(image,
-                   str(index)+image_path,
-                   (0,12),
+                   str(index) + image_path,
+                   (0, 12),
                    cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0))
         cv.imshow("InitImage", image)
         for i in label:
             for ii in i:
-                if ii[0] != 0.0:
+                if ii[4] != 0.0:
                     cv.rectangle(image,
-                                 (int(ii[1] - ii[3] / 2), int(ii[2] - ii[4] / 2)),
-                                 (int(ii[1] + ii[3] / 2), int(ii[2] + ii[4] / 2)),
+                                 (int((ii[0] - ii[2] / 2) * cfg.ImageSize), int((ii[1] - ii[3] / 2) * cfg.ImageSize)),
+                                 (int((ii[0] + ii[2] / 2) * cfg.ImageSize), int((ii[1] + ii[3] / 2) * cfg.ImageSize)),
                                  (0, 255, 0),
                                  2)
                     cv.putText(image,
                                cfg.Classes[int(ii[5])],
-                               (int(ii[1] - ii[3] / 2+2), int(ii[2] - ii[4] / 2)+12),
-                               cv.FONT_HERSHEY_SIMPLEX,0.5,(0,255,0))
+                               (int((ii[0] - ii[2] / 2)*cfg.ImageSize + 2), int((ii[1] - ii[3] / 2)*cfg.ImageSize + 12)),
+                               cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0))
         cv.imshow("LabeledImage", image)
         cv.waitKey()
         index += 1
