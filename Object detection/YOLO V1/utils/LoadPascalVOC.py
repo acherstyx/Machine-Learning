@@ -3,40 +3,42 @@ import pickle
 import cv2.cv2 as cv
 import numpy as np
 import random
-import Config as cfg
+from utils import Config as cfg
 import os
-import time
-import tensorflow as tf
 
-PASCAL_VOC_PATH = "./VOCdevkit/"
+PASCAL_VOC_PATH = "./.VOCdevkit/"
 
 
 class PascalVOC:
     def __init__(self):
-        # data path
+        # path
+        #   data
         self.ImagePath = cfg.ImagePath
         self.AnnotationPath = cfg.AnnotationsPath
-        # image settings
-        self.ImageSize = cfg.ImageSize
-        self.CellNum = cfg.CellNum
-        self.CellSize = cfg.CellSize
-        self.CellEach = int(cfg.ImageSize / cfg.CellSize)
-        self.Classes = cfg.Classes
-        self.ClassesDict = cfg.ClassesDict
-        # path to save data
+        #   save
         self.SaveTrain = cfg.TrainSavePath
         self.SaveVal = cfg.ValSavePath
-        # get image file list
+        #   image list
         self.ImageList = os.listdir(self.ImagePath)
         self.ImageList = [i.replace(".jpg", "") for i in self.ImageList]
         random.shuffle(self.ImageList)
-        # divide dataset
+
+        # image settings
+        self.ImageSize = cfg.ImageSize
+        self.CellSize = cfg.CellSize
+
+        # class
+        self.Classes = cfg.Classes
+        self.ClassesDict = cfg.ClassesDict
+
+        # divide data set to train and val
         self.TrainPercentage = cfg.TrainPercentage
         self.TrainNum = int(len(self.ImageList) * self.TrainPercentage)
         self.ValNum = len(self.ImageList) - self.TrainNum
         self.TrainImageList = self.ImageList[:self.TrainNum]
         self.ValImageList = self.ImageList[self.TrainNum:]
 
+        # start loading data
         if cfg.LoadSavedData and os.path.isfile(self.SaveTrain) and os.path.isfile(self.SaveVal):
             self.TrainData = self.__LoadPickle__(self.SaveTrain)
             self.ValData = self.__LoadPickle__(self.SaveVal)
@@ -46,55 +48,59 @@ class PascalVOC:
             self.__SaveToPickle__(self.SaveTrain, self.TrainData)
             self.__SaveToPickle__(self.SaveVal, self.ValData)
 
-    @staticmethod
-    def __LoadPickle__(file_path):
-        print("Load data from: " + file_path)
-        with open(file_path, "rb") as f:
-            return pickle.load(f)
-
+    # accelerated loading save
     @staticmethod
     def __SaveToPickle__(file_path, data_to_save):
         print("Save data to: " + file_path)
         with open(file_path, "wb") as f:
             pickle.dump(data_to_save, f)
 
+    # accelerated loading load
+    @staticmethod
+    def __LoadPickle__(file_path):
+        print("Load data from: " + file_path)
+        with open(file_path, "rb") as f:
+            return pickle.load(f)
+
+    # load from raw pascal voc data
     def __LoadImageLabel__(self):
         print("Loading labels from: " + self.AnnotationPath)
 
         self.TrainData = []
-        # load train dataset
+        # load train data set
         for TrainImage in self.TrainImageList:
-            Label, NumObject = self.__LoadLabel__(TrainImage)
-            if NumObject == 0:
+            current_label, has_object = self.__LoadLabel__(TrainImage)
+            if has_object == 0:
                 continue
-            image_path = os.path.join(self.ImagePath, TrainImage + ".jpg")
-            self.TrainData.append({"ImagePath": image_path, "Label": Label})
+            current_image_path = os.path.join(self.ImagePath, TrainImage + ".jpg")
+            self.TrainData.append({"ImagePath": current_image_path, "Label": current_label})
         self.ValData = []
-        # load val dataset
+        # load val data set
         for ValImage in self.ValImageList:
-            Label, NumObject = self.__LoadLabel__(ValImage)
-            if NumObject == 0:
+            current_label, has_object = self.__LoadLabel__(ValImage)
+            if has_object == 0:
                 continue
-            image_path = os.path.join(self.ImagePath, ValImage + ".jpg")
-            self.ValData.append({"ImagePath": image_path, "Label": Label})
+            current_image_path = os.path.join(self.ImagePath, ValImage + ".jpg")
+            self.ValData.append({"ImagePath": current_image_path, "Label": current_label})
 
     def __LoadLabel__(self, image_name):
-        AnnotationPath = os.path.join(self.AnnotationPath, image_name + ".xml")
+        annotation_path = os.path.join(self.AnnotationPath, image_name + ".xml")
 
-        label = np.zeros((self.CellEach, self.CellEach, 6))
+        label_temp = np.zeros((self.CellSize, self.CellSize, 6))
 
-        XMLTree = ET.parse(AnnotationPath)
-        Objects = XMLTree.findall("object")
+        # xml preload
+        xml_tree = ET.parse(annotation_path)
+        xml_object = xml_tree.findall("object")
 
-        Size = XMLTree.find("size")
-        Size = [int(Size.find("height").text),
-                int(Size.find("width").text)]
+        image_size = xml_tree.find("size")
+        image_size = [int(image_size.find("height").text),
+                      int(image_size.find("width").text)]
 
-        h_ratio = 1.0 * self.ImageSize / Size[0]
-        w_ratio = 1.0 * self.ImageSize / Size[1]
+        h_ratio = 1.0 * self.ImageSize / image_size[0]
+        w_ratio = 1.0 * self.ImageSize / image_size[1]
 
-        ObjectCount = 0
-        for Object in Objects:
+        object_counter = 0
+        for Object in xml_object:
             Box = Object.find("bndbox")
             x1 = max(min((float(Box.find('xmin').text) - 1) * w_ratio, self.ImageSize - 1), 0)
             x2 = max(min((float(Box.find('xmax').text) - 1) * w_ratio, self.ImageSize - 1), 0)
@@ -102,33 +108,33 @@ class PascalVOC:
             y2 = max(min((float(Box.find('ymax').text) - 1) * h_ratio, self.ImageSize - 1), 0)
 
             class_id = self.ClassesDict[Object.find("name").text.lower().strip()]
-            BoxInfo = [(x1 + x2) / 2.0, (y1 + y2) / 2.0, x2 - x1, y2 - y1]
+            box_info = [(x1 + x2) / 2.0, (y1 + y2) / 2.0, x2 - x1, y2 - y1]
 
-            Cell_x = int(BoxInfo[0] * self.CellEach / self.ImageSize)
-            Cell_y = int(BoxInfo[1] * self.CellEach / self.ImageSize)
+            cell_x = int(box_info[0] * self.CellSize / self.ImageSize)
+            cell_y = int(box_info[1] * self.CellSize / self.ImageSize)
 
-            if label[Cell_x, Cell_y, 0] == 1:  # this cell already has an object
+            if label_temp[cell_x, cell_y, 0] == 1:  # this cell already has an object
                 continue
             else:
-                ObjectCount += 1
+                object_counter += 1
             # format: hasObject[0] boxinfo[1:5] class_id[5]
-            label[Cell_x, Cell_y, 4] = 1
-            label[Cell_x, Cell_y, 0:4] = [i / cfg.ImageSize for i in BoxInfo]
-            label[Cell_x, Cell_y, 5] = class_id
+            label_temp[cell_x, cell_y, 4] = 1
+            label_temp[cell_x, cell_y, 0:4] = [i / cfg.ImageSize for i in box_info]
+            label_temp[cell_x, cell_y, 5] = class_id
 
-        return label, ObjectCount
+        return label_temp, object_counter
 
-    def next_batch_train(self, batch_size):
+    def train_generator(self, batch_size):
         for i in range(batch_size, self.TrainNum, batch_size):
             batch_img = []
             batch_label = []
             batch_data = self.TrainData[i - batch_size: i]
             for single_sample in batch_data:
-                batch_img.append(cv.resize(cv.imread(single_sample["ImagePath"]), (448, 448)))
+                batch_img.append(cv.resize(cv.imread(single_sample["ImagePath"]), (cfg.ImageSize, cfg.ImageSize)))
                 batch_label.append(single_sample["Label"])
             batch_img = np.array(batch_img)
             batch_label = np.array(batch_label)
-            yield ({"image": np.array(batch_img, dtype=np.float)}, {"output": np.array(batch_label)})
+            yield {"input": np.array(batch_img, dtype=np.float)}, {"output": np.array(batch_label)}
 
     def val_generator(self, batch_size):
         for i in range(batch_size, self.ValNum, batch_size):
@@ -136,20 +142,20 @@ class PascalVOC:
             batch_label = []
             batch_data = self.ValData[i - batch_size: i]
             for single_sample in batch_data:
-                batch_img.append(cv.resize(cv.imread(single_sample["ImagePath"]), (448, 448)))
+                batch_img.append(cv.resize(cv.imread(single_sample["ImagePath"]), (cfg.ImageSize, cfg.ImageSize)))
                 batch_label.append(single_sample["Label"])
             batch_img = np.array(batch_img)
             batch_label = np.array(batch_label)
-            yield ({"image": np.array(batch_img, dtype=np.float)}, {"output": np.array(batch_label)})
+            yield {"input": np.array(batch_img, dtype=np.float)}, {"output": np.array(batch_label)}
 
 
 if __name__ == "__main__":
     data = PascalVOC()
 
-    train_iter = data.next_batch_train(10)
+    val_iter = data.val_generator(10)
 
-    for image, label in train_iter:
-        print("Data shape:", np.shape(image["image"]), np.shape(label["output"]))
+    for image, label in val_iter:
+        print("Data shape:", np.shape(image["input"]), np.shape(label["output"]))
         break
 
     # get image sample
@@ -160,7 +166,7 @@ if __name__ == "__main__":
         label = sample["Label"]
 
         image = cv.imread(image_path)
-        image = cv.resize(image, (448, 448))
+        image = cv.resize(image, (cfg.ImageSize, cfg.ImageSize))
         cv.putText(image,
                    str(index) + image_path,
                    (0, 12),
@@ -176,7 +182,8 @@ if __name__ == "__main__":
                                  2)
                     cv.putText(image,
                                cfg.Classes[int(ii[5])],
-                               (int((ii[0] - ii[2] / 2)*cfg.ImageSize + 2), int((ii[1] - ii[3] / 2)*cfg.ImageSize + 12)),
+                               (int((ii[0] - ii[2] / 2) * cfg.ImageSize + 2),
+                                int((ii[1] - ii[3] / 2) * cfg.ImageSize + 12)),
                                cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0))
         cv.imshow("LabeledImage", image)
         cv.waitKey()
