@@ -1,4 +1,6 @@
 # pascal voc path
+import numpy as np
+
 ImagePath = "./.VOCdevkit/VOC2012/JPEGImages"
 AnnotationsPath = "./.VOCdevkit/VOC2012/Annotations/"
 
@@ -15,11 +17,20 @@ Classes = ["aeroplane", "bicycle", "bird", "boat", "bottle",
 ClassesNum = len(Classes)
 ClassesDict = dict(zip(Classes, [i for i in range(ClassesNum)]))
 
+# label format
+LabelBoxInfoIndex = [0, 4]
+LabelHasObjIndex = 4
+LabelClassIndex = 5
 
 # data save
 LoadSavedData = False
 TrainSavePath = "./.data/train_data.pkl"
 ValSavePath = "./.data/val_data.pkl"
+
+# offset
+Offset = np.array([np.arange(CellSize)] * CellSize * BoxPerCell)
+Offset = np.reshape(Offset, (BoxPerCell, CellSize, CellSize))
+Offset = np.transpose(Offset, (1, 2, 0))
 
 # train
 TrainPercentage = 0.8
@@ -29,3 +40,6 @@ ValBatchSize = 1
 
 # predict
 HasObjThreshold = 0.8
+
+# debug
+DebugOutput = True

@@ -117,9 +117,9 @@ class PascalVOC:
                 continue
             else:
                 object_counter += 1
-            # format: hasObject[0] boxinfo[1:5] class_id[5]
-            label_temp[cell_x, cell_y, 4] = 1
-            label_temp[cell_x, cell_y, 0:4] = [i / cfg.ImageSize for i in box_info]
+            # format: confidence[0] x,y,w,h[0:4] classes[5]
+            label_temp[cell_x, cell_y, 0] = 1
+            label_temp[cell_x, cell_y, 1:5] = [i / cfg.ImageSize for i in box_info]
             label_temp[cell_x, cell_y, 5] = class_id
 
         return label_temp, object_counter
@@ -134,7 +134,7 @@ class PascalVOC:
                 batch_label.append(single_sample["Label"])
             batch_img = np.array(batch_img)
             batch_label = np.array(batch_label)
-            yield {"input": np.array(batch_img, dtype=np.float)}, {"output": np.array(batch_label)}
+            yield {"input": np.array(batch_img, dtype=np.float) / 255.0}, {"output": np.array(batch_label)}
 
     def val_generator(self, batch_size):
         for i in range(batch_size, self.ValNum, batch_size):
@@ -146,7 +146,7 @@ class PascalVOC:
                 batch_label.append(single_sample["Label"])
             batch_img = np.array(batch_img)
             batch_label = np.array(batch_label)
-            yield {"input": np.array(batch_img, dtype=np.float)}, {"output": np.array(batch_label)}
+            yield {"input": np.array(batch_img, dtype=np.float) / 255.0}, {"output": np.array(batch_label)}
 
 
 if __name__ == "__main__":
@@ -156,6 +156,8 @@ if __name__ == "__main__":
 
     for image, label in val_iter:
         print("Data shape:", np.shape(image["input"]), np.shape(label["output"]))
+        print(label)
+        print(image)
         break
 
     # get image sample
@@ -174,16 +176,16 @@ if __name__ == "__main__":
         cv.imshow("InitImage", image)
         for i in label:
             for ii in i:
-                if ii[4] != 0.0:
+                if ii[0] != 0.0:
                     cv.rectangle(image,
-                                 (int((ii[0] - ii[2] / 2) * cfg.ImageSize), int((ii[1] - ii[3] / 2) * cfg.ImageSize)),
-                                 (int((ii[0] + ii[2] / 2) * cfg.ImageSize), int((ii[1] + ii[3] / 2) * cfg.ImageSize)),
+                                 (int((ii[1] - ii[3] / 2) * cfg.ImageSize), int((ii[2] - ii[4] / 2) * cfg.ImageSize)),
+                                 (int((ii[1] + ii[3] / 2) * cfg.ImageSize), int((ii[2] + ii[4] / 2) * cfg.ImageSize)),
                                  (0, 255, 0),
                                  2)
                     cv.putText(image,
                                cfg.Classes[int(ii[5])],
-                               (int((ii[0] - ii[2] / 2) * cfg.ImageSize + 2),
-                                int((ii[1] - ii[3] / 2) * cfg.ImageSize + 12)),
+                               (int((ii[1] - ii[3] / 2) * cfg.ImageSize + 2),
+                                int((ii[2] - ii[4] / 2) * cfg.ImageSize + 12)),
                                cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0))
         cv.imshow("LabeledImage", image)
         cv.waitKey()
