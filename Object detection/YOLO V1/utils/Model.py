@@ -4,7 +4,6 @@ import tensorflow_hub as hub
 import utils.Config as Config
 from utils.YoloLoss import yolo_loss
 
-
 os.environ["PATH"] += os.pathsep + "D:/graphviz/bin"
 os.environ['TFHUB_CACHE_DIR'] = './.data/'
 
@@ -20,7 +19,11 @@ def yolo_model(show_summary=False):
     # Follow layers
     hidden_layer = inception_feature_extractor(input_layer)
     hidden_layer = tf.keras.layers.Dense(Config.CellSize * Config.CellSize * 30,
-                                         activation="sigmoid")(hidden_layer)
+                                         activation="relu",
+                                         kernel_initializer=tf.keras.initializers.TruncatedNormal())(hidden_layer)
+    hidden_layer = tf.keras.layers.Dense(Config.CellSize * Config.CellSize * 30,
+                                         activation="sigmoid",
+                                         kernel_initializer=tf.keras.initializers.TruncatedNormal())(hidden_layer)
     output = tf.keras.layers.Reshape((Config.CellSize,
                                       Config.CellSize,
                                       5 * Config.BoxPerCell + Config.ClassesNum),
@@ -29,7 +32,7 @@ def yolo_model(show_summary=False):
     net_model = tf.keras.Model(inputs=input_layer,
                                outputs=output,
                                name="Yolo_Model")
-    net_model.compile(optimizer=tf.keras.optimizers.Adam(0.0001),
+    net_model.compile(optimizer=tf.keras.optimizers.Adam(Config.LearningRate),
                       loss=yolo_loss)
     if show_summary:
         # Layer summary

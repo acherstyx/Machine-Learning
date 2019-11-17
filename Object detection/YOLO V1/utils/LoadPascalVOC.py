@@ -132,9 +132,8 @@ class PascalVOC:
             for single_sample in batch_data:
                 batch_img.append(cv.resize(cv.imread(single_sample["ImagePath"]), (cfg.ImageSize, cfg.ImageSize)))
                 batch_label.append(single_sample["Label"])
-            batch_img = np.array(batch_img)
-            batch_label = np.array(batch_label)
-            yield {"input": np.array(batch_img, dtype=np.float) / 255.0}, {"output": np.array(batch_label)}
+            yield {"input": np.array(batch_img, dtype=np.float) / 255.0}, \
+                  {"output": np.array(batch_label, dtype=np.float)}
 
     def val_generator(self, batch_size):
         for i in range(batch_size, self.ValNum, batch_size):
@@ -146,7 +145,8 @@ class PascalVOC:
                 batch_label.append(single_sample["Label"])
             batch_img = np.array(batch_img)
             batch_label = np.array(batch_label)
-            yield {"input": np.array(batch_img, dtype=np.float) / 255.0}, {"output": np.array(batch_label)}
+            yield {"input": np.array(batch_img, dtype=np.float) / 255.0}, \
+                  {"output": np.array(batch_label, dtype=np.float)}
 
 
 if __name__ == "__main__":

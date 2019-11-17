@@ -1,5 +1,6 @@
 # pascal voc path
 import numpy as np
+from datetime import datetime
 
 ImagePath = "./.VOCdevkit/VOC2012/JPEGImages"
 AnnotationsPath = "./.VOCdevkit/VOC2012/Annotations/"
@@ -23,7 +24,7 @@ LabelHasObjIndex = 4
 LabelClassIndex = 5
 
 # data save
-LoadSavedData = False
+LoadSavedData = True
 TrainSavePath = "./.data/train_data.pkl"
 ValSavePath = "./.data/val_data.pkl"
 
@@ -32,14 +33,25 @@ Offset = np.array([np.arange(CellSize)] * CellSize * BoxPerCell)
 Offset = np.reshape(Offset, (BoxPerCell, CellSize, CellSize))
 Offset = np.transpose(Offset, (1, 2, 0))
 
-# train
+# predict
+HasObjThreshold = 0.5
+TIMESTAMP = "{0:%Y-%m-%dT%H-%M-%S/}".format(datetime.now())
+
+# debug
+DebugOutput = False
+DebugOutput_ImageShow_Point = True
+DebugOutput_Confidence = True
+#   in loss function
+DebugOutput_IOU = True
+DebugOutput_ObjectDelta = True
+DebugOutput_NoObjectDelta = True
+DebugOutput_PredBox = False
+DebugOutput_loss = False
+# train data
 TrainPercentage = 0.8
 ImageDropoutRate = 0.2
 TrainBatchSize = 1
 ValBatchSize = 1
 
-# predict
-HasObjThreshold = 0.8
-
-# debug
-DebugOutput = True
+# train super parameters
+LearningRate = 0.001

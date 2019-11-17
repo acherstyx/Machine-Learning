@@ -28,7 +28,7 @@ def calc_iou(box1, box2):
     right_down = tf.minimum(box1_point[..., 2:], box2_point[..., 2:])
     # get area of intersection
     intersection_wh = tf.maximum(0.0, right_down - left_up)
-    intersection_area = intersection_wh[..., 0] * intersection_wh[..., 1]
+    intersection_area = tf.maximum(intersection_wh[..., 0] * intersection_wh[..., 1], 1e-10)
 
     # calculate the area of box1 and box2
     box1_area = box1[..., 2] * box1[..., 3]
@@ -56,6 +56,10 @@ def yolo_loss(y_true, y_pred):
     pred_bbox_cell_base = tf.reshape(y_pred[..., 2:10],
                                      [-1, Config.CellSize, Config.CellSize, Config.BoxPerCell, 4])  # [_,7,7,2,4]
     # pred_bbox_cell_base = tf.math.sigmoid(pred_bbox_cell_base)
+
+    # TODO: remove debug output
+    if Config.DebugOutput_PredBox:
+        print(" - pred of box in loss input: ", y_pred[..., :10])
 
     #  true
     true_classes = y_true[..., 5]  # [_,7,7,1] use index instead of probabilities
@@ -92,6 +96,10 @@ def yolo_loss(y_true, y_pred):
     # get iou of box
     iou_of_pred_and_true = calc_iou(pred_bbox_image_base, true_bbox_image_base)
 
+    # TODO: remove debug output
+    if Config.DebugOutput_IOU:
+        print(" - iou in loss: ", iou_of_pred_and_true)
+
     # get mask
     obj_mask = tf.reduce_max(iou_of_pred_and_true,
                              axis=3,
@@ -100,25 +108,22 @@ def yolo_loss(y_true, y_pred):
         (iou_of_pred_and_true >= obj_mask),
         tf.float32
     ) * true_confidence
-    no_obj_mask = tf.ones_like(obj_mask, dtype=tf.float32) - obj_mask
+    no_obj_mask = 1.0 - obj_mask
 
     # classify loss
-    true_classes_one_hot = tf.one_hot(indices=tf.cast(true_classes, dtype=tf.uint8),
-                                      depth=Config.ClassesNum,
-                                      on_value=1.0,
-                                      off_value=0.0,
-                                      axis=-1,
-                                      dtype=tf.float32)
-    classes_delta = tf.square((true_classes_one_hot - pred_classes) * true_confidence)
-    classes_loss = tf.reduce_mean(
-        tf.reduce_sum(classes_delta, axis=[1, 2, 3])
-    )
+    classes_loss = tf.squeeze(true_confidence, axis=-1) * tf.keras.losses.sparse_categorical_crossentropy(true_classes,
+                                                                                                          pred_classes)
+    classes_loss = tf.reduce_sum(classes_loss, axis=[1, 2])
 
     # has object loss
-    object_delta = tf.square((pred_confidence - iou_of_pred_and_true) * obj_mask)
+    object_delta = tf.square((iou_of_pred_and_true - pred_confidence) * obj_mask)
     object_loss = tf.reduce_mean(
         tf.reduce_sum(object_delta, axis=[1, 2, 3])
     )
+
+    # TODO: remove debug output
+    if Config.DebugOutput_ObjectDelta:
+        print(" - object delta in loss: ", object_delta[0])
 
     # no object loss
     no_obj_delta = tf.square(no_obj_mask * pred_confidence)
@@ -126,20 +131,25 @@ def yolo_loss(y_true, y_pred):
         tf.reduce_sum(no_obj_delta, axis=[1, 2, 3])
     )
 
+    # TODO: remove debug output
+    if Config.DebugOutput_NoObjectDelta:
+        print(" - no_object delta in loss: ", no_obj_delta)
+
     # box loss
     coordinate_mask = tf.expand_dims(obj_mask, 4)
-    bbox_delta = tf.square(coordinate_mask * (pred_bbox_cell_base - true_bbox_cell_base))
+    bbox_delta = tf.square(coordinate_mask * (true_bbox_cell_base - pred_bbox_cell_base))
     bbox_loss = tf.reduce_mean(
         tf.reduce_sum(bbox_delta, axis=[1, 2, 3, 4])
     )
 
-    if Config.DebugOutput:
-        print("obj_loss", object_loss,
-              "no_obj_loss", no_obj_loss,
-              "bbox_loss", bbox_loss)
+    # TODO: remove debug output
+    if Config.DebugOutput_loss:
+        print("- obj_loss", object_loss,
+              "\n- no_obj_loss", no_obj_loss,
+              "\n- bbox_loss", bbox_loss,
+              "\n- classes_loss", classes_loss)
 
-    # return classes_loss + object_loss + no_obj_loss + bbox_loss
-    return object_loss + no_obj_loss
+    return object_loss + no_obj_loss + bbox_loss + classes_loss
 
 
 if __name__ == "__main__":
@@ -147,14 +157,38 @@ if __name__ == "__main__":
     # y_pred = tf.random.normal([2, 7, 7, 30])
     # print(yolo_loss(y_true, y_pred))
 
-    print(">>> Loss sample")
+    # print(">>> Loss sample")
+    # y_true = np.zeros([2, 7, 7, 6])
+    # y_pred = np.zeros([2, 7, 7, 30])
+    # y_true[0, 0, 0, :] = [1.0, 0.5, 0.5, 0.05, 0.05, 2.0]
+    # y_pred[0, 0, 0, :11] = [1000.0, 0.000000000000001,
+    #                         0.5, 0.5, 0.05, 0.05,
+    #                         0.1, 0.1, 0.1, 0.1,
+    #                         1.000]
+    # y_true = tf.Variable(y_true, dtype=tf.float32)
+    # y_pred = tf.Variable(y_pred, dtype=tf.float32)
+    # print("loss ", yolo_loss(y_true, y_pred))
+
+    print(">>> loss test - all zero")
     y_true = np.zeros([2, 7, 7, 6])
     y_pred = np.zeros([2, 7, 7, 30])
-    y_true[0, 0, 0, :] = [1.0, 0.5, 0.5, 0.05, 0.05, 2.0]
-    y_pred[0, 0, 0, :11] = [1000.0, 0.000000000000001,
-                            0.5, 0.5, 0.05, 0.05,
-                            0.1, 0.1, 0.1, 0.1,
-                            1.000]
-    y_true = tf.Variable(y_true, dtype=tf.float32)
-    y_pred = tf.Variable(y_pred, dtype=tf.float32)
-    print("loss ", yolo_loss(y_true, y_pred))
+    tf_y_true = tf.Variable(y_true, dtype=tf.float32)
+    tf_y_pred = tf.Variable(y_pred, dtype=tf.float32)
+    print("loss ", yolo_loss(tf_y_true, tf_y_pred))
+
+    print(">>> loss test - pred:conf all=1 true:conf all=0")
+    y_true = np.zeros([2, 7, 7, 6])
+    y_pred = np.zeros([2, 7, 7, 30])
+    y_pred[..., :2] = 1
+    tf_y_true = tf.Variable(y_true, dtype=tf.float32)
+    tf_y_pred = tf.Variable(y_pred, dtype=tf.float32)
+    print("loss ", yolo_loss(tf_y_true, tf_y_pred))
+
+    print(">>> loss test - pred:conf=0 true:conf=1")
+    y_true = np.zeros([2, 7, 7, 6])
+    y_pred = np.zeros([2, 7, 7, 30])
+    y_true[..., 0] = 1
+    tf_y_true = tf.Variable(y_true, dtype=tf.float32)
+    tf_y_pred = tf.Variable(y_pred, dtype=tf.float32)
+    print("loss ", yolo_loss(tf_y_true, tf_y_pred))
+
