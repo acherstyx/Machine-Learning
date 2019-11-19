@@ -116,7 +116,9 @@ def yolo_loss(y_true, y_pred):
     # classify loss
     classes_loss = tf.squeeze(true_confidence, axis=-1) * tf.keras.losses.sparse_categorical_crossentropy(true_classes,
                                                                                                           pred_classes)
-    classes_loss = tf.reduce_sum(classes_loss, axis=[1, 2])
+    classes_loss = tf.reduce_mean(
+        tf.reduce_sum(classes_loss, axis=[1, 2])
+    )
 
     # has object loss
     object_delta = tf.square((iou_of_pred_and_true - pred_confidence) * obj_mask)

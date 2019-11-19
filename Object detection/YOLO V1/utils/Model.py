@@ -11,7 +11,7 @@ os.environ['TFHUB_CACHE_DIR'] = './.data/'
 def yolo_model(model_type="TRANSFER", show_summary=False):
     """
     build neural network model for yolo
-    @param model_type: "TRANSFER" or "ORIGINAL"
+    @param model_type: "INCEPTION V3" or "ORIGINAL"
     @param show_summary: Show summary of the model
     @return: keras model
     """
@@ -20,15 +20,35 @@ def yolo_model(model_type="TRANSFER", show_summary=False):
     hidden_layer = tf.keras.layers.Dropout(Config.Dropout_Image)(input_layer)
 
     # TODO: Model switch for different model
-    if model_type == "TRANSFER":
+    if model_type == "INCEPTION V3":
         # Inception model from tfhub
         inception_feature_extractor = hub.keras_layer.KerasLayer(
             "https://storage.googleapis.com/tfhub-modules/google/tf2-preview/inception_v3/feature_vector/4.tar.gz",
             output_shape=[2048],
-            trainable=True)
+            trainable=False)
         # Follow layers
         hidden_layer = inception_feature_extractor(hidden_layer)
         hidden_layer = tf.keras.layers.Dropout(Config.Dropout_Output)(hidden_layer)
+    elif model_type == "INCEPTION V3 KERAS":
+        inception_feature_extractor = tf.keras.applications.inception_v3.InceptionV3(include_top=False,
+                                                                                     weights='imagenet',
+                                                                                     input_tensor=hidden_layer,
+                                                                                     input_shape=None,
+                                                                                     pooling=None)
+        hidden_layer = inception_feature_extractor.output
+        # hidden_layer = tf.keras.layers.Conv2D(filters=4096,
+        #                                       kernel_size=(1, 1),
+        #                                       strides=(1, 1),
+        #                                       padding="valid",
+        #                                       kernel_initializer=tf.keras.initializers.TruncatedNormal(),
+        #                                       use_bias=False,
+        #                                       )(hidden_layer)
+        # hidden_layer = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(hidden_layer)
+        hidden_layer = tf.keras.layers.MaxPool2D(pool_size=(8, 8),
+                                                 padding="valid",
+                                                 )(hidden_layer)
+        hidden_layer = tf.keras.layers.Dropout(Config.Dropout_Output)(hidden_layer)
+        hidden_layer = tf.keras.layers.Flatten()(hidden_layer)
     elif model_type == "ORIGINAL":
         # period 1 - reduce image size
         hidden_layer = tf.keras.layers.Conv2D(filters=64,
@@ -237,19 +257,27 @@ def yolo_model(model_type="TRANSFER", show_summary=False):
                                               use_bias=False
                                               )(hidden_layer)
         hidden_layer = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(hidden_layer)
-        hidden_layer = tf.keras.layers.MaxPool2D(pool_size=(4, 4),
-                                                 strides=(2, 2),
+        hidden_layer = tf.keras.layers.MaxPool2D(pool_size=(7, 7),
+                                                 strides=(1, 1),
                                                  padding="valid")(hidden_layer)
+        hidden_layer = tf.keras.layers.Dropout(Config.Dropout_Output)(hidden_layer)
+        hidden_layer = tf.keras.layers.Flatten()(hidden_layer)
+        hidden_layer = tf.keras.layers.Dense(4096,
+                                             kernel_initializer=tf.keras.initializers.TruncatedNormal(),
+                                             )(hidden_layer)
+        hidden_layer = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(hidden_layer)
+    elif model_type == "XCEPTION":
+        xception_feature_extractor = tf.keras.applications.xception.Xception(include_top=False,
+                                                                             weights='imagenet',
+                                                                             input_tensor=input_layer,
+                                                                             pooling=None,
+                                                                             classes=4096)
+        hidden_layer = xception_feature_extractor(hidden_layer)
         hidden_layer = tf.keras.layers.Dropout(Config.Dropout_Output)(hidden_layer)
     else:
         raise TypeError
 
     # FC layers
-    hidden_layer = tf.keras.layers.Flatten()(hidden_layer)
-    hidden_layer = tf.keras.layers.Dense(4096,
-                                         kernel_initializer=tf.keras.initializers.TruncatedNormal(),
-                                         )(hidden_layer)
-    hidden_layer = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(hidden_layer)
     hidden_layer = tf.keras.layers.Dense(Config.CellSize * Config.CellSize * 30,
                                          activation="sigmoid",
                                          kernel_initializer=tf.keras.initializers.TruncatedNormal())(hidden_layer)
@@ -261,7 +289,7 @@ def yolo_model(model_type="TRANSFER", show_summary=False):
     net_model = tf.keras.Model(inputs=input_layer,
                                outputs=output,
                                name="Yolo_Model")
-    net_model.compile(optimizer=tf.keras.optimizers.Adam(Config.LearningRate),
+    net_model.compile(optimizer=tf.keras.optimizers.SGD(Config.LearningRate, Config.Momentum, decay=Config.Decay),
                       loss=yolo_loss)
     if show_summary:
         # Layer summary
@@ -269,11 +297,11 @@ def yolo_model(model_type="TRANSFER", show_summary=False):
         tf.keras.utils.plot_model(model=net_model,
                                   to_file='Net.png',
                                   show_shapes=True,
-                                  dpi=300)
+                                  dpi=100)
 
     return net_model
 
 
 if __name__ == "__main__":
     print("Is there a GPU available: ", tf.test.is_gpu_available())
-    model = yolo_model(show_summary=True)
+    model = yolo_model(model_type="INCEPTION V3 KERAS", show_summary=True)

@@ -6,7 +6,7 @@ ImagePath = "./.VOCdevkit/VOC2012/JPEGImages"
 AnnotationsPath = "./.VOCdevkit/VOC2012/Annotations/"
 
 # image segmentation setting
-ImageSize = 448
+ImageSize = 299
 CellSize = 7
 BoxPerCell = 2
 
@@ -24,7 +24,7 @@ LabelHasObjIndex = 4
 LabelClassIndex = 5
 
 # data save
-LoadSavedData = True
+LoadSavedData = False
 TrainSavePath = "./.data/train_data.pkl"
 ValSavePath = "./.data/val_data.pkl"
 
@@ -60,7 +60,7 @@ LossWeight_Classes = 1.0
 TrainPercentage = 0.8
 TrainBatchSize = 1
 ValBatchSize = 1
-Epochs = 5
+Epochs = 1
 InitialEpoch = 0
 
 # model setting
@@ -70,3 +70,5 @@ Dropout_Output = 0.5
 
 # train super parameters
 LearningRate = 0.0001
+Momentum = 0.9
+Decay = 0.0005
