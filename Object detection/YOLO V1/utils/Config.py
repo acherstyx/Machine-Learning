@@ -6,7 +6,7 @@ ImagePath = "./.VOCdevkit/VOC2012/JPEGImages"
 AnnotationsPath = "./.VOCdevkit/VOC2012/Annotations/"
 
 # image segmentation setting
-ImageSize = 299
+ImageSize = 448
 CellSize = 7
 BoxPerCell = 2
 
@@ -39,19 +39,34 @@ TIMESTAMP = "{0:%Y-%m-%dT%H-%M-%S/}".format(datetime.now())
 
 # debug
 DebugOutput = False
+#   in draw bbox
 DebugOutput_ImageShow_Point = True
+#   in train
 DebugOutput_Confidence = True
 #   in loss function
-DebugOutput_IOU = True
-DebugOutput_ObjectDelta = True
-DebugOutput_NoObjectDelta = True
+DebugOutput_IOU = False
+DebugOutput_ObjectDelta = False
+DebugOutput_NoObjectDelta = False
 DebugOutput_PredBox = False
 DebugOutput_loss = False
+
+# weight of loss
+LossWeight_Coordinate = 5.0
+LossWeight_NoObject = 0.5
+LossWeight_Object = 1.0
+LossWeight_Classes = 1.0
+
 # train data
 TrainPercentage = 0.8
-ImageDropoutRate = 0.2
 TrainBatchSize = 1
 ValBatchSize = 1
+Epochs = 5
+InitialEpoch = 0
+
+# model setting
+ReLU_Slope = 0.1
+Dropout_Image = 0.2
+Dropout_Output = 0.5
 
 # train super parameters
-LearningRate = 0.001
+LearningRate = 0.0001
