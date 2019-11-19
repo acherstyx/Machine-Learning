@@ -60,7 +60,7 @@ def DrawBoundingBox(predict_result, current_image, bbox_num, base_coordinate, is
                 else:
                     class_index = ii[5 * bbox_num]
                 cv.putText(current_image,
-                           Config.Classes[int(class_index)]+" {:.2f}".format(np.amax(ii[:bbox_num])),
+                           Config.Classes[int(class_index)] + " {:.2f}".format(np.amax(ii[:bbox_num])),
                            (x1 + 10, y1 + 15),
                            cv.FONT_HERSHEY_SIMPLEX,
                            0.5,
@@ -102,6 +102,6 @@ if __name__ == "__main__":
         result[:, :, 0] = result[:, :, 1] = label[:, :, 0]
         result[:, :, 2:6] = result[:, :, 6:10] = label[:, :, 1:5]
         image_result = DrawBoundingBox(result, image, 2, "IMAGE", True, 0.8)
-        cv.imshow("out2",image_result)
+        cv.imshow("out2", image_result)
 
         cv.waitKey()

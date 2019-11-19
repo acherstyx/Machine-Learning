@@ -7,40 +7,56 @@ from utils.ImageProcessing import DrawBoundingBox
 import cv2 as cv
 from tensorflow.keras.callbacks import TensorBoard
 
-import numpy as np
-
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 # create data loader
 data_set = PascalVOC()
-train_iter = data_set.train_generator(Config.TrainBatchSize)
-val_iter = data_set.val_generator(Config.ValBatchSize)
 # create model
 model = yolo_model(show_summary=False)
 # Tensorboard support
-tensorboard = TensorBoard(log_dir=".log/{}".format(Config.TIMESTAMP))
+log_dir = os.path.join(
+    ".logs",
+    Config.TIMESTAMP,
+)
+tensorboard = TensorBoard(log_dir=log_dir)
 
 while True:
-    # train
+    # load model
     try:
         model.load_weights("./.save/my_model.h5")
+        print("Model restored.")
     except OSError:
         print(">>> Can't load model!")
         pass
+    except ValueError:
+        if input("Model don't match, continue?(y/n): ") != "y":
+            exit()
 
+    # TODO: Add Test.py
+    # data generator
+    train_iter = data_set.train_generator(Config.TrainBatchSize)
+    val_iter = data_set.val_generator(Config.ValBatchSize)
+    # train
     model.fit_generator(generator=train_iter,
                         steps_per_epoch=data_set.TrainNum / Config.TrainBatchSize,
                         # steps_per_epoch=5,
-                        epochs=10,
+                        epochs=Config.Epochs,
+                        validation_data=val_iter,
+                        validation_steps=100,
+                        validation_freq=1,
                         # callbacks=[tensorboard],
-                        verbose=1)
+                        verbose=1,
+                        initial_epoch=Config.InitialEpoch)
+
+    # save
     if input(">>> Finished. save ?(y/n): ") == "y":
         model.save("./.save/my_model.h5")
         print(">>> saved.")
     else:
         print(">>> abort.")
 
-    predict_train_iter = data_set.train_generator(Config.TrainBatchSize)
+    # predict
+    predict_train_iter = data_set.train_generator(batch_size=1)
     count = 0
     User_Threshold = input("Define current threshold: ")
     for image, label in predict_train_iter:
@@ -64,5 +80,5 @@ while True:
             cv.waitKey()
 
         count += 1
-        if count == 100:
+        if count == 1000:
             break

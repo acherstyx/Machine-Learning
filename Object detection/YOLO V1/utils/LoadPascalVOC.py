@@ -124,7 +124,7 @@ class PascalVOC:
 
         return label_temp, object_counter
 
-    def train_generator(self, batch_size, epochs=1):
+    def train_generator(self, batch_size):
         while True:
             for i in range(batch_size, self.TrainNum, batch_size):
                 batch_img = []
