@@ -39,8 +39,8 @@ def DrawBoundingBox(predict_result, current_image, bbox_num, base_coordinate, is
                 else:
                     raise AttributeError
 
-                h = int(ii[offset + 2] * Config.ImageSize)
-                w = int(ii[offset + 3] * Config.ImageSize)
+                w = int(ii[offset + 2] * Config.ImageSize)
+                h = int(ii[offset + 3] * Config.ImageSize)
 
                 x1 = int(center_x - h / 2)
                 y1 = int(center_y - w / 2)

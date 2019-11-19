@@ -12,15 +12,15 @@ def calc_iou(box1, box2):
     return
         iou: [batch_size,cell_size,cell_size,box_pre_cell]
     """
-    box1_point = tf.stack([box1[..., 0] - box1[..., 2] / 2.0,
-                           box1[..., 1] - box1[..., 3] / 2.0,
-                           box1[..., 0] + box1[..., 2] / 2.0,
-                           box1[..., 1] + box1[..., 3] / 2.0],
+    box1_point = tf.stack([box1[..., 0] - box1[..., 3] / 2.0,
+                           box1[..., 1] - box1[..., 2] / 2.0,
+                           box1[..., 0] + box1[..., 3] / 2.0,
+                           box1[..., 1] + box1[..., 2] / 2.0],
                           axis=-1)
-    box2_point = tf.stack([box2[..., 0] - box2[..., 2] / 2.0,
-                           box2[..., 1] - box2[..., 3] / 2.0,
-                           box2[..., 0] + box2[..., 2] / 2.0,
-                           box2[..., 1] + box2[..., 3] / 2.0],
+    box2_point = tf.stack([box2[..., 0] - box2[..., 3] / 2.0,
+                           box2[..., 1] - box2[..., 2] / 2.0,
+                           box2[..., 0] + box2[..., 3] / 2.0,
+                           box2[..., 1] + box2[..., 2] / 2.0],
                           axis=-1)
 
     # left up point and right down point of intersection
@@ -35,8 +35,9 @@ def calc_iou(box1, box2):
     box2_area = box2[..., 2] * box2[..., 3]
 
     union_area = tf.maximum(box1_area + box2_area - intersection_area, 1e-10)
+    out = tf.clip_by_value(intersection_area / union_area, 0.0, 1.0)
 
-    return tf.clip_by_value(intersection_area / union_area, 0.0, 1.0)
+    return out
 
 
 def yolo_loss(y_true, y_pred):
@@ -50,12 +51,14 @@ def yolo_loss(y_true, y_pred):
     # unpack data
     #   pred
     pred_classes = y_pred[..., 10:]  # [_,7,7,20]
-    # pred_classes = tf.math.softmax(pred_classes, axis=-1)
     pred_confidence = y_pred[..., :2]  # [_,7,7,2]
-    # pred_confidence = tf.math.sigmoid(pred_confidence)
     pred_bbox_cell_base = tf.reshape(y_pred[..., 2:10],
                                      [-1, Config.CellSize, Config.CellSize, Config.BoxPerCell, 4])  # [_,7,7,2,4]
-    # pred_bbox_cell_base = tf.math.sigmoid(pred_bbox_cell_base)
+    pred_bbox_cell_base = tf.stack([pred_bbox_cell_base[..., 0],
+                                    pred_bbox_cell_base[..., 1],
+                                    tf.sqrt(pred_bbox_cell_base[..., 2]),
+                                    tf.sqrt(pred_bbox_cell_base[..., 3])],
+                                   axis=-1)
 
     # TODO: remove debug output
     if Config.DebugOutput_PredBox:
@@ -149,7 +152,10 @@ def yolo_loss(y_true, y_pred):
               "\n- bbox_loss", bbox_loss,
               "\n- classes_loss", classes_loss)
 
-    return object_loss + no_obj_loss + bbox_loss + classes_loss
+    return object_loss * Config.LossWeight_Object + \
+           no_obj_loss * Config.LossWeight_NoObject + \
+           bbox_loss * Config.LossWeight_Coordinate + \
+           classes_loss * Config.LossWeight_Classes
 
 
 if __name__ == "__main__":
@@ -192,3 +198,8 @@ if __name__ == "__main__":
     tf_y_pred = tf.Variable(y_pred, dtype=tf.float32)
     print("loss ", yolo_loss(tf_y_true, tf_y_pred))
 
+    print(">>> iou test - same bbox")
+    y_cellbase = np.random.uniform(0, 1, size=[2, 7, 7, 2, 4])
+    x_cellbase = np.random.uniform(0, 1, size=[2, 7, 7, 2, 4])
+    print("iou x: ", x_cellbase, "iou y: ", y_cellbase)
+    print(calc_iou(y_cellbase, x_cellbase))

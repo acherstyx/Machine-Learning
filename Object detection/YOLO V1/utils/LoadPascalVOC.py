@@ -108,7 +108,7 @@ class PascalVOC:
             y2 = max(min((float(Box.find('ymax').text) - 1) * h_ratio, self.ImageSize - 1), 0)
 
             class_id = self.ClassesDict[Object.find("name").text.lower().strip()]
-            box_info = [(x1 + x2) / 2.0, (y1 + y2) / 2.0, x2 - x1, y2 - y1]
+            box_info = [(x1 + x2) / 2.0, (y1 + y2) / 2.0, y2 - y1, x2 - x1]
 
             cell_x = int(box_info[0] * self.CellSize / self.ImageSize)
             cell_y = int(box_info[1] * self.CellSize / self.ImageSize)
@@ -124,29 +124,31 @@ class PascalVOC:
 
         return label_temp, object_counter
 
-    def train_generator(self, batch_size):
-        for i in range(batch_size, self.TrainNum, batch_size):
-            batch_img = []
-            batch_label = []
-            batch_data = self.TrainData[i - batch_size: i]
-            for single_sample in batch_data:
-                batch_img.append(cv.resize(cv.imread(single_sample["ImagePath"]), (cfg.ImageSize, cfg.ImageSize)))
-                batch_label.append(single_sample["Label"])
-            yield {"input": np.array(batch_img, dtype=np.float) / 255.0}, \
-                  {"output": np.array(batch_label, dtype=np.float)}
+    def train_generator(self, batch_size, epochs=1):
+        while True:
+            for i in range(batch_size, self.TrainNum, batch_size):
+                batch_img = []
+                batch_label = []
+                batch_data = self.TrainData[i - batch_size: i]
+                for single_sample in batch_data:
+                    batch_img.append(cv.resize(cv.imread(single_sample["ImagePath"]), (cfg.ImageSize, cfg.ImageSize)))
+                    batch_label.append(single_sample["Label"])
+                yield {"input": np.array(batch_img, dtype=np.float) / 255.0}, \
+                      {"output": np.array(batch_label, dtype=np.float)}
 
     def val_generator(self, batch_size):
-        for i in range(batch_size, self.ValNum, batch_size):
-            batch_img = []
-            batch_label = []
-            batch_data = self.ValData[i - batch_size: i]
-            for single_sample in batch_data:
-                batch_img.append(cv.resize(cv.imread(single_sample["ImagePath"]), (cfg.ImageSize, cfg.ImageSize)))
-                batch_label.append(single_sample["Label"])
-            batch_img = np.array(batch_img)
-            batch_label = np.array(batch_label)
-            yield {"input": np.array(batch_img, dtype=np.float) / 255.0}, \
-                  {"output": np.array(batch_label, dtype=np.float)}
+        while True:
+            for i in range(batch_size, self.ValNum, batch_size):
+                batch_img = []
+                batch_label = []
+                batch_data = self.ValData[i - batch_size: i]
+                for single_sample in batch_data:
+                    batch_img.append(cv.resize(cv.imread(single_sample["ImagePath"]), (cfg.ImageSize, cfg.ImageSize)))
+                    batch_label.append(single_sample["Label"])
+                batch_img = np.array(batch_img)
+                batch_label = np.array(batch_label)
+                yield {"input": np.array(batch_img, dtype=np.float) / 255.0}, \
+                      {"output": np.array(batch_label, dtype=np.float)}
 
 
 if __name__ == "__main__":
@@ -178,14 +180,14 @@ if __name__ == "__main__":
             for ii in i:
                 if ii[0] != 0.0:
                     cv.rectangle(image,
-                                 (int((ii[1] - ii[3] / 2) * cfg.ImageSize), int((ii[2] - ii[4] / 2) * cfg.ImageSize)),
-                                 (int((ii[1] + ii[3] / 2) * cfg.ImageSize), int((ii[2] + ii[4] / 2) * cfg.ImageSize)),
+                                 (int((ii[1] - ii[4] / 2) * cfg.ImageSize), int((ii[2] - ii[3] / 2) * cfg.ImageSize)),
+                                 (int((ii[1] + ii[4] / 2) * cfg.ImageSize), int((ii[2] + ii[3] / 2) * cfg.ImageSize)),
                                  (0, 255, 0),
                                  2)
                     cv.putText(image,
                                cfg.Classes[int(ii[5])],
-                               (int((ii[1] - ii[3] / 2) * cfg.ImageSize + 2),
-                                int((ii[2] - ii[4] / 2) * cfg.ImageSize + 12)),
+                               (int((ii[1] - ii[4] / 2) * cfg.ImageSize + 2),
+                                int((ii[2] - ii[3] / 2) * cfg.ImageSize + 12)),
                                cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0))
         cv.imshow("LabeledImage", image)
         cv.waitKey()
