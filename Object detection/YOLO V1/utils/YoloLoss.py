@@ -12,15 +12,15 @@ def calc_iou(box1, box2):
     return
         iou: [batch_size,cell_size,cell_size,box_pre_cell]
     """
-    box1_point = tf.stack([box1[..., 0] - box1[..., 3] / 2.0,
-                           box1[..., 1] - box1[..., 2] / 2.0,
-                           box1[..., 0] + box1[..., 3] / 2.0,
-                           box1[..., 1] + box1[..., 2] / 2.0],
+    box1_point = tf.stack([box1[..., 0] - box1[..., 2] / 2.0,
+                           box1[..., 1] - box1[..., 3] / 2.0,
+                           box1[..., 0] + box1[..., 2] / 2.0,
+                           box1[..., 1] + box1[..., 3] / 2.0],
                           axis=-1)
-    box2_point = tf.stack([box2[..., 0] - box2[..., 3] / 2.0,
-                           box2[..., 1] - box2[..., 2] / 2.0,
-                           box2[..., 0] + box2[..., 3] / 2.0,
-                           box2[..., 1] + box2[..., 2] / 2.0],
+    box2_point = tf.stack([box2[..., 0] - box2[..., 2] / 2.0,
+                           box2[..., 1] - box2[..., 3] / 2.0,
+                           box2[..., 0] + box2[..., 2] / 2.0,
+                           box2[..., 1] + box2[..., 3] / 2.0],
                           axis=-1)
 
     # left up point and right down point of intersection
@@ -74,15 +74,15 @@ def yolo_loss(y_true, y_pred):
                                    [1, 1, 1, Config.BoxPerCell, 1])  # fit bbox number in prediction
 
     # get offset
-    offset_t = tf.constant(Config.Offset, dtype=tf.float32)
-    offset_t = tf.reshape(offset_t, (1, Config.CellSize, Config.CellSize, Config.BoxPerCell))
+    offset = tf.constant(Config.Offset, dtype=tf.float32)
+    offset = tf.reshape(offset, (1, Config.CellSize, Config.CellSize, Config.BoxPerCell))
     try:
-        offset_t = tf.tile(offset_t, [batch_size, 1, 1, 1])
+        offset = tf.tile(offset, [batch_size, 1, 1, 1])
     except TypeError:
         pass
-    offset = tf.transpose(offset_t, (0, 2, 1, 3))  # transpose of offset
+    offset_t = tf.transpose(offset, (0, 2, 1, 3))  # transpose of offset
 
-    # Cell-based coordinates -> Image-based coordinates, for IoU
+    # Cell-based coordinates -> Image-based coordinates, for IoU(
     pred_bbox_image_base = tf.stack([(pred_bbox_cell_base[..., 0] + offset) / Config.CellSize,
                                      (pred_bbox_cell_base[..., 1] + offset_t) / Config.CellSize,
                                      tf.square(pred_bbox_cell_base[..., 2]),
@@ -114,10 +114,15 @@ def yolo_loss(y_true, y_pred):
     no_obj_mask = 1.0 - obj_mask
 
     # classify loss
-    classes_loss = tf.squeeze(true_confidence, axis=-1) * tf.keras.losses.sparse_categorical_crossentropy(true_classes,
-                                                                                                          pred_classes)
+    true_classes_one_hot = tf.one_hot(indices=tf.cast(true_classes, dtype=tf.uint8),
+                                      depth=Config.ClassesNum,
+                                      on_value=1.0,
+                                      off_value=0.0,
+                                      axis=-1,
+                                      dtype=tf.float32)
+    classes_delta = tf.square((true_classes_one_hot - pred_classes) * true_confidence)
     classes_loss = tf.reduce_mean(
-        tf.reduce_sum(classes_loss, axis=[1, 2])
+        tf.reduce_sum(classes_delta, axis=[1, 2, 3])
     )
 
     # has object loss

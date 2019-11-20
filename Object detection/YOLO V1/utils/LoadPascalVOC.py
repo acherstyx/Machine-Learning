@@ -58,7 +58,7 @@ class PascalVOC:
     # accelerated loading load
     @staticmethod
     def __LoadPickle__(file_path):
-        print("Load data from: " + file_path)
+        print("Load data from cache: " + file_path)
         with open(file_path, "rb") as f:
             return pickle.load(f)
 
@@ -108,7 +108,7 @@ class PascalVOC:
             y2 = max(min((float(Box.find('ymax').text) - 1) * h_ratio, self.ImageSize - 1), 0)
 
             class_id = self.ClassesDict[Object.find("name").text.lower().strip()]
-            box_info = [(x1 + x2) / 2.0, (y1 + y2) / 2.0, y2 - y1, x2 - x1]
+            box_info = [(x1 + x2) / 2.0, (y1 + y2) / 2.0, x2 - x1, y2 - y1]  # x,y,w,h
 
             cell_x = int(box_info[0] * self.CellSize / self.ImageSize)
             cell_y = int(box_info[1] * self.CellSize / self.ImageSize)
@@ -118,9 +118,9 @@ class PascalVOC:
             else:
                 object_counter += 1
             # format: confidence[0] x,y,w,h[0:4] classes[5]
-            label_temp[cell_x, cell_y, 0] = 1
-            label_temp[cell_x, cell_y, 1:5] = [i / cfg.ImageSize for i in box_info]
-            label_temp[cell_x, cell_y, 5] = class_id
+            label_temp[cell_y, cell_x, 0] = 1
+            label_temp[cell_y, cell_x, 1:5] = [i / cfg.ImageSize for i in box_info]
+            label_temp[cell_y, cell_x, 5] = class_id
 
         return label_temp, object_counter
 
@@ -180,14 +180,14 @@ if __name__ == "__main__":
             for ii in i:
                 if ii[0] != 0.0:
                     cv.rectangle(image,
-                                 (int((ii[1] - ii[4] / 2) * cfg.ImageSize), int((ii[2] - ii[3] / 2) * cfg.ImageSize)),
-                                 (int((ii[1] + ii[4] / 2) * cfg.ImageSize), int((ii[2] + ii[3] / 2) * cfg.ImageSize)),
+                                 (int((ii[1] - ii[3] / 2) * cfg.ImageSize), int((ii[2] - ii[4] / 2) * cfg.ImageSize)),
+                                 (int((ii[1] + ii[3] / 2) * cfg.ImageSize), int((ii[2] + ii[4] / 2) * cfg.ImageSize)),
                                  (0, 255, 0),
                                  2)
                     cv.putText(image,
                                cfg.Classes[int(ii[5])],
-                               (int((ii[1] - ii[4] / 2) * cfg.ImageSize + 2),
-                                int((ii[2] - ii[3] / 2) * cfg.ImageSize + 12)),
+                               (int((ii[1] - ii[3] / 2) * cfg.ImageSize + 2),
+                                int((ii[2] - ii[4] / 2) * cfg.ImageSize + 12)),
                                cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0))
         cv.imshow("LabeledImage", image)
         cv.waitKey()

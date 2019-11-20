@@ -41,8 +41,9 @@ TIMESTAMP = "{0:%Y-%m-%dT%H-%M-%S/}".format(datetime.now())
 DebugOutput = False
 #   in draw bbox
 DebugOutput_ImageShow_Point = True
+DebugOutput_ImageShow_Logits = True
 #   in train
-DebugOutput_Confidence = True
+DebugOutput_Confidence = False
 #   in loss function
 DebugOutput_IOU = False
 DebugOutput_ObjectDelta = False
@@ -58,10 +59,10 @@ LossWeight_Classes = 1.0
 
 # train data
 TrainPercentage = 0.8
-TrainBatchSize = 1
+TrainBatchSize = 20
 ValBatchSize = 1
-Epochs = 1
-InitialEpoch = 0
+Epochs = 20
+InitialEpoch = 2
 
 # model setting
 ReLU_Slope = 0.1
@@ -69,6 +70,6 @@ Dropout_Image = 0.2
 Dropout_Output = 0.5
 
 # train super parameters
-LearningRate = 0.0001
+LearningRate = 0.01
 Momentum = 0.9
 Decay = 0.0005
