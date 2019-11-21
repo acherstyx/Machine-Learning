@@ -1,0 +1,5 @@
+coco/
+pascal voc/
+VOCdevkit/
+.gitignore
+.data/
