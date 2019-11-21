@@ -24,7 +24,7 @@ LabelHasObjIndex = 4
 LabelClassIndex = 5
 
 # data save
-LoadSavedData = False
+LoadSavedData = True
 TrainSavePath = "./.data/train_data.pkl"
 ValSavePath = "./.data/val_data.pkl"
 
@@ -61,8 +61,8 @@ LossWeight_Classes = 1.0
 TrainPercentage = 0.8
 TrainBatchSize = 20
 ValBatchSize = 1
-Epochs = 20
-InitialEpoch = 2
+Epochs = 75
+InitialEpoch = 20
 
 # model setting
 ReLU_Slope = 0.1

@@ -8,14 +8,15 @@ import cv2 as cv
 from tensorflow.keras.callbacks import TensorBoard
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+print("Is there a GPU available: ", tf.test.is_gpu_available())
 
 # create data loader
 data_set = PascalVOC()
 # create model
-model = yolo_model(show_summary=False)
+model = yolo_model(model_type="INCEPTION V3 KERAS", show_summary=False)
 # Tensorboard support
 log_dir = os.path.join(
-    ".logs",
+    ".log",
     Config.TIMESTAMP,
 )
 tensorboard = TensorBoard(log_dir=log_dir)
@@ -42,9 +43,9 @@ while True:
                         # steps_per_epoch=5,
                         epochs=Config.Epochs,
                         validation_data=val_iter,
-                        validation_steps=100,
+                        validation_steps=500,
                         validation_freq=1,
-                        # callbacks=[tensorboard],
+                        callbacks=[tensorboard],
                         verbose=1,
                         initial_epoch=Config.InitialEpoch)
 
@@ -56,10 +57,10 @@ while True:
         print(">>> abort.")
 
     # predict
-    predict_train_iter = data_set.train_generator(batch_size=1)
+    predict_data_iter = data_set.train_generator(batch_size=1)
     count = 0
     User_Threshold = input("Define current threshold: ")
-    for image, label in predict_train_iter:
+    for image, label in predict_data_iter:
         image = image["input"]
         label = label["output"]
         result = model.predict(image, batch_size=1)
@@ -72,7 +73,7 @@ while True:
                                         is_logits=False,
                                         base_coordinate="IMAGE",
                                         color=(0, 0, 255))
-            # image_out = cv.resize(image_out, (900, 900))
+            image_out = cv.resize(image_out, (600, 600))
             if Config.DebugOutput_Confidence:
                 print(result[..., :Config.BoxPerCell])
 

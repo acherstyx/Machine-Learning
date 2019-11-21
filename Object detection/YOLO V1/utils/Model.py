@@ -35,20 +35,15 @@ def yolo_model(model_type="TRANSFER", show_summary=False):
                                                                                      input_tensor=hidden_layer,
                                                                                      input_shape=None,
                                                                                      pooling=None)
+        # don't train these params
+        for layers in inception_feature_extractor.layers[:-30]:
+            layers.trainable = False
+
         hidden_layer = inception_feature_extractor.output
-        # hidden_layer = tf.keras.layers.Conv2D(filters=4096,
-        #                                       kernel_size=(1, 1),
-        #                                       strides=(1, 1),
-        #                                       padding="valid",
-        #                                       kernel_initializer=tf.keras.initializers.TruncatedNormal(),
-        #                                       use_bias=False,
-        #                                       )(hidden_layer)
-        # hidden_layer = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(hidden_layer)
-        hidden_layer = tf.keras.layers.MaxPool2D(pool_size=(8, 8),
-                                                 padding="valid",
-                                                 )(hidden_layer)
-        hidden_layer = tf.keras.layers.Dropout(Config.Dropout_Output)(hidden_layer)
-        hidden_layer = tf.keras.layers.Flatten()(hidden_layer)
+        with tf.device("/CPU:0"):
+            hidden_layer = tf.keras.layers.GlobalAveragePooling2D()(hidden_layer)
+            hidden_layer = tf.keras.layers.Dropout(Config.Dropout_Output)(hidden_layer)
+            hidden_layer = tf.keras.layers.Flatten()(hidden_layer)
     elif model_type == "ORIGINAL":
         # period 1 - reduce image size
         hidden_layer = tf.keras.layers.Conv2D(filters=64,
@@ -278,26 +273,28 @@ def yolo_model(model_type="TRANSFER", show_summary=False):
         raise TypeError
 
     # FC layers
-    hidden_layer = tf.keras.layers.Dense(Config.CellSize * Config.CellSize * 30,
-                                         activation="sigmoid",
-                                         kernel_initializer=tf.keras.initializers.TruncatedNormal())(hidden_layer)
-    output = tf.keras.layers.Reshape((Config.CellSize,
-                                      Config.CellSize,
-                                      5 * Config.BoxPerCell + Config.ClassesNum),
-                                     name="output")(hidden_layer)
+    with tf.device("/CPU:0"):
+        hidden_layer = tf.keras.layers.Dense(Config.CellSize * Config.CellSize * 30,
+                                             kernel_initializer=tf.keras.initializers.TruncatedNormal())(hidden_layer)
+        output = tf.keras.layers.Reshape((Config.CellSize,
+                                          Config.CellSize,
+                                          5 * Config.BoxPerCell + Config.ClassesNum),
+                                         name="output")(hidden_layer)
     # Get model
     net_model = tf.keras.Model(inputs=input_layer,
                                outputs=output,
                                name="Yolo_Model")
     net_model.compile(optimizer=tf.keras.optimizers.SGD(Config.LearningRate, Config.Momentum, decay=Config.Decay),
                       loss=yolo_loss)
+
+    net_model.summary()
+
     if show_summary:
         # Layer summary
-        net_model.summary()
         tf.keras.utils.plot_model(model=net_model,
                                   to_file='Net.png',
                                   show_shapes=True,
-                                  dpi=100)
+                                  dpi=200)
 
     return net_model
 
