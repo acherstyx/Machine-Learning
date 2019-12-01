@@ -30,16 +30,20 @@ def yolo_model(model_type="TRANSFER", show_summary=False):
         hidden_layer = inception_feature_extractor(hidden_layer)
         hidden_layer = tf.keras.layers.Dropout(Config.Dropout_Output)(hidden_layer)
     elif model_type == "INCEPTION V3 KERAS":
+        # load inception network to extract feature from the image
         inception_feature_extractor = tf.keras.applications.inception_v3.InceptionV3(include_top=False,
                                                                                      weights='imagenet',
                                                                                      input_tensor=hidden_layer,
                                                                                      input_shape=None,
                                                                                      pooling=None)
-        # don't train these params
-        for layers in inception_feature_extractor.layers[:-30]:
-            layers.trainable = False
+        # # don't train these params
+        # for layers in inception_feature_extractor.layers[:]:
+        #     layers.trainable = False
 
+        # feature extractor
         hidden_layer = inception_feature_extractor.output
+        # generate the output of the conventional network
+        # without any dense layer
         with tf.device("/CPU:0"):
             hidden_layer = tf.keras.layers.GlobalAveragePooling2D()(hidden_layer)
             hidden_layer = tf.keras.layers.Dropout(Config.Dropout_Output)(hidden_layer)
@@ -105,70 +109,63 @@ def yolo_model(model_type="TRANSFER", show_summary=False):
                                                  padding="SAME",
                                                  )(hidden_layer)
 
-        # period 3 - inception_1
-        #   group 1
-        inception_1_group_1 = tf.keras.layers.Conv2D(filters=256,
-                                                     kernel_size=(1, 1),
-                                                     padding="SAME",
-                                                     kernel_initializer=tf.keras.initializers.TruncatedNormal(),
-                                                     use_bias=False,
-                                                     )(hidden_layer)
-        inception_1_group_1 = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(inception_1_group_1)
-        inception_1_group_1 = tf.keras.layers.Conv2D(filters=512,
-                                                     kernel_size=(3, 3),
-                                                     padding="SAME",
-                                                     kernel_initializer=tf.keras.initializers.TruncatedNormal(),
-                                                     use_bias=False,
-                                                     )(inception_1_group_1)
-        inception_1_group_1 = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(inception_1_group_1)
-        #   group 2
-        inception_1_group_2 = tf.keras.layers.Conv2D(filters=256,
-                                                     kernel_size=(1, 1),
-                                                     padding="SAME",
-                                                     kernel_initializer=tf.keras.initializers.TruncatedNormal(),
-                                                     use_bias=False,
-                                                     )(hidden_layer)
-        inception_1_group_2 = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(inception_1_group_2)
-        inception_1_group_2 = tf.keras.layers.Conv2D(filters=512,
-                                                     kernel_size=(3, 3),
-                                                     padding="SAME",
-                                                     kernel_initializer=tf.keras.initializers.TruncatedNormal(),
-                                                     use_bias=False,
-                                                     )(inception_1_group_2)
-        inception_1_group_2 = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(inception_1_group_2)
-        #   group 3
-        inception_1_group_3 = tf.keras.layers.Conv2D(filters=256,
-                                                     kernel_size=(1, 1),
-                                                     padding="SAME",
-                                                     kernel_initializer=tf.keras.initializers.TruncatedNormal(),
-                                                     use_bias=False,
-                                                     )(hidden_layer)
-        inception_1_group_3 = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(inception_1_group_3)
-        inception_1_group_3 = tf.keras.layers.Conv2D(filters=512,
-                                                     kernel_size=(3, 3),
-                                                     padding="SAME",
-                                                     kernel_initializer=tf.keras.initializers.TruncatedNormal(),
-                                                     use_bias=False,
-                                                     )(inception_1_group_3)
-        inception_1_group_3 = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(inception_1_group_3)
-        #    group 4
-        inception_1_group_4 = tf.keras.layers.Conv2D(filters=256,
-                                                     kernel_size=(1, 1),
-                                                     padding="SAME",
-                                                     kernel_initializer=tf.keras.initializers.TruncatedNormal(),
-                                                     use_bias=False,
-                                                     )(hidden_layer)
-        inception_1_group_4 = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(inception_1_group_4)
-        inception_1_group_4 = tf.keras.layers.Conv2D(filters=512,
-                                                     kernel_size=(3, 3),
-                                                     padding="SAME",
-                                                     kernel_initializer=tf.keras.initializers.TruncatedNormal(),
-                                                     use_bias=False,
-                                                     )(inception_1_group_4)
-        inception_1_group_4 = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(inception_1_group_4)
-        #   merge all layers
-        hidden_layer = tf.keras.layers.Concatenate(axis=-1)([inception_1_group_1, inception_1_group_2,
-                                                             inception_1_group_3, inception_1_group_4])
+        # period 3
+        hidden_layer = tf.keras.layers.Conv2D(filters=256,
+                                              kernel_size=(1, 1),
+                                              padding="SAME",
+                                              kernel_initializer=tf.keras.initializers.TruncatedNormal(),
+                                              use_bias=False,
+                                              )(hidden_layer)
+        hidden_layer = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(hidden_layer)
+        hidden_layer = tf.keras.layers.Conv2D(filters=512,
+                                              kernel_size=(3, 3),
+                                              padding="SAME",
+                                              kernel_initializer=tf.keras.initializers.TruncatedNormal(),
+                                              use_bias=False,
+                                              )(hidden_layer)
+        hidden_layer = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(hidden_layer)
+        hidden_layer = tf.keras.layers.Conv2D(filters=256,
+                                              kernel_size=(1, 1),
+                                              padding="SAME",
+                                              kernel_initializer=tf.keras.initializers.TruncatedNormal(),
+                                              use_bias=False,
+                                              )(hidden_layer)
+        hidden_layer = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(hidden_layer)
+        hidden_layer = tf.keras.layers.Conv2D(filters=512,
+                                              kernel_size=(3, 3),
+                                              padding="SAME",
+                                              kernel_initializer=tf.keras.initializers.TruncatedNormal(),
+                                              use_bias=False,
+                                              )(hidden_layer)
+        hidden_layer = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(hidden_layer)
+        hidden_layer = tf.keras.layers.Conv2D(filters=256,
+                                              kernel_size=(1, 1),
+                                              padding="SAME",
+                                              kernel_initializer=tf.keras.initializers.TruncatedNormal(),
+                                              use_bias=False,
+                                              )(hidden_layer)
+        hidden_layer = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(hidden_layer)
+        hidden_layer = tf.keras.layers.Conv2D(filters=512,
+                                              kernel_size=(3, 3),
+                                              padding="SAME",
+                                              kernel_initializer=tf.keras.initializers.TruncatedNormal(),
+                                              use_bias=False,
+                                              )(hidden_layer)
+        hidden_layer = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(hidden_layer)
+        hidden_layer = tf.keras.layers.Conv2D(filters=256,
+                                              kernel_size=(1, 1),
+                                              padding="SAME",
+                                              kernel_initializer=tf.keras.initializers.TruncatedNormal(),
+                                              use_bias=False,
+                                              )(hidden_layer)
+        hidden_layer = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(hidden_layer)
+        hidden_layer = tf.keras.layers.Conv2D(filters=512,
+                                              kernel_size=(3, 3),
+                                              padding="SAME",
+                                              kernel_initializer=tf.keras.initializers.TruncatedNormal(),
+                                              use_bias=False,
+                                              )(hidden_layer)
+        hidden_layer = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(hidden_layer)
         hidden_layer = tf.keras.layers.Conv2D(filters=512,
                                               kernel_size=(1, 1),
                                               padding="SAME",
@@ -188,39 +185,35 @@ def yolo_model(model_type="TRANSFER", show_summary=False):
                                                  padding="SAME",
                                                  )(hidden_layer)
 
-        # period 4 - inception 2
-        #   group 1
-        inception_2_group_1 = tf.keras.layers.Conv2D(filters=512,
+        # period 4
+        hidden_layer = tf.keras.layers.Conv2D(filters=512,
                                                      kernel_size=(1, 1),
                                                      padding="SAME",
                                                      kernel_initializer=tf.keras.initializers.TruncatedNormal(),
                                                      use_bias=False,
                                                      )(hidden_layer)
-        inception_2_group_1 = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(inception_2_group_1)
-        inception_2_group_1 = tf.keras.layers.Conv2D(filters=1024,
+        hidden_layer = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(hidden_layer)
+        hidden_layer = tf.keras.layers.Conv2D(filters=1024,
                                                      kernel_size=(3, 3),
                                                      padding="SAME",
                                                      kernel_initializer=tf.keras.initializers.TruncatedNormal(),
                                                      use_bias=False,
-                                                     )(inception_2_group_1)
-        inception_2_group_1 = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(inception_2_group_1)
-        #   group 2
-        inception_2_group_2 = tf.keras.layers.Conv2D(filters=512,
+                                                     )(hidden_layer)
+        hidden_layer = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(hidden_layer)
+        hidden_layer = tf.keras.layers.Conv2D(filters=512,
                                                      kernel_size=(1, 1),
                                                      padding="SAME",
                                                      kernel_initializer=tf.keras.initializers.TruncatedNormal(),
                                                      use_bias=False,
                                                      )(hidden_layer)
-        inception_2_group_2 = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(inception_2_group_2)
-        inception_2_group_2 = tf.keras.layers.Conv2D(filters=1024,
+        hidden_layer = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(hidden_layer)
+        hidden_layer = tf.keras.layers.Conv2D(filters=1024,
                                                      kernel_size=(3, 3),
                                                      padding="SAME",
                                                      kernel_initializer=tf.keras.initializers.TruncatedNormal(),
                                                      use_bias=False,
-                                                     )(inception_2_group_2)
-        inception_2_group_2 = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(inception_2_group_2)
-        #   merge all layers
-        hidden_layer = tf.keras.layers.Concatenate(axis=-1)([inception_2_group_1, inception_2_group_2])
+                                                     )(hidden_layer)
+        hidden_layer = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(hidden_layer)
         hidden_layer = tf.keras.layers.Conv2D(filters=1024,
                                               kernel_size=(3, 3),
                                               padding="SAME",
@@ -236,8 +229,7 @@ def yolo_model(model_type="TRANSFER", show_summary=False):
                                               use_bias=False,
                                               )(hidden_layer)
         hidden_layer = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(hidden_layer)
-
-        # period 5 last conventional layers
+        # period 5
         hidden_layer = tf.keras.layers.Conv2D(filters=1024,
                                               kernel_size=(3, 3),
                                               padding="SAME",
@@ -272,30 +264,38 @@ def yolo_model(model_type="TRANSFER", show_summary=False):
     else:
         raise TypeError
 
-    # FC layers
+    # fully connected layers
     with tf.device("/CPU:0"):
+        hidden_layer = tf.keras.layers.Dense(512,
+                                             kernel_initializer=tf.keras.initializers.TruncatedNormal(),
+                                             )(hidden_layer)
+        hidden_layer = tf.keras.layers.ReLU(max_value=1)(hidden_layer)
         hidden_layer = tf.keras.layers.Dense(Config.CellSize * Config.CellSize * 30,
-                                             kernel_initializer=tf.keras.initializers.TruncatedNormal())(hidden_layer)
+                                             kernel_initializer=tf.keras.initializers.TruncatedNormal(),
+                                             )(hidden_layer)
+        # # use linear activation in output layer
+        # hidden_layer = tf.keras.layers.ReLU(max_value=1)(hidden_layer)
+
+        # reshape the output to the shape of [CellSize, CellSize, 30]
         output = tf.keras.layers.Reshape((Config.CellSize,
                                           Config.CellSize,
                                           5 * Config.BoxPerCell + Config.ClassesNum),
                                          name="output")(hidden_layer)
-    # Get model
+    # get model by define the input and output
     net_model = tf.keras.Model(inputs=input_layer,
                                outputs=output,
                                name="Yolo_Model")
+    # set compile method
     net_model.compile(optimizer=tf.keras.optimizers.SGD(Config.LearningRate, Config.Momentum, decay=Config.Decay),
                       loss=yolo_loss)
-
+    # show summary in text
     net_model.summary()
-
     if show_summary:
-        # Layer summary
+        # show summary in flow chart
         tf.keras.utils.plot_model(model=net_model,
                                   to_file='Net.png',
                                   show_shapes=True,
-                                  dpi=200)
-
+                                  dpi=50)
     return net_model
 
 

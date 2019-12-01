@@ -114,7 +114,7 @@ class PascalVOC:
             cell_x = int(box_info[0] * self.CellSize / self.ImageSize)
             cell_y = int(box_info[1] * self.CellSize / self.ImageSize)
 
-            if label_temp[cell_x, cell_y, 0] == 1:  # this cell already has an object
+            if label_temp[cell_y, cell_x, 0] == 1:  # this cell already has an object
                 continue
             else:
                 object_counter += 1
