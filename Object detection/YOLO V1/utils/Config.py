@@ -1,12 +1,14 @@
 # pascal voc path
 import numpy as np
 from datetime import datetime
+import os
 
+# directory of data set
 ImagePath = "./.VOCdevkit/VOC2012/JPEGImages"
 AnnotationsPath = "./.VOCdevkit/VOC2012/Annotations/"
 
 # image segmentation setting
-ImageSize = 299
+ImageSize = 448
 CellSize = 7
 BoxPerCell = 2
 
@@ -19,12 +21,12 @@ ClassesNum = len(Classes)
 ClassesDict = dict(zip(Classes, [i for i in range(ClassesNum)]))
 
 # label format
-LabelBoxInfoIndex = [0, 4]
-LabelHasObjIndex = 4
-LabelClassIndex = 5
+# LabelBoxInfoIndex = [0, 4]
+# LabelHasObjIndex = 4
+# LabelClassIndex = 5
 
-# data save
-LoadSavedData = True
+# data save path
+LoadSavedData = False
 TrainSavePath = "./.data/train_data.pkl"
 ValSavePath = "./.data/val_data.pkl"
 
@@ -33,9 +35,46 @@ Offset = np.array([np.arange(CellSize)] * CellSize * BoxPerCell)
 Offset = np.reshape(Offset, (BoxPerCell, CellSize, CellSize))
 Offset = np.transpose(Offset, (1, 2, 0))
 
+# weight of loss
+LossWeight_Coordinate = 5.0
+LossWeight_NoObject = 0.5
+LossWeight_Object = 1.0
+LossWeight_Classes = 1.5
+
+# network model setting
+ReLU_Slope = 0.1
+Dropout_Image = 0.2
+Dropout_Output = 0.5
+
+# train super parameters
+# TrainNameStamp = "{0:%Y-%m-%dT%H-%M-%S/}".format(datetime.now())
+TrainNameStamp = "2019-12-01T16-33-12"
+# train data setting
+TrainPercentage = 0.8
+TrainBatchSize = 8
+ValBatchSize = 1
+# learning rate
+LearningRate = 0.0001
+Momentum = 0.9
+Decay = 0.0005
+# learning rate scheduler
+def scheduler(epoch):
+    if epoch == 0:
+        return 0.0001
+    elif epoch <= 10:
+        return 0.0002
+    elif epoch <= 20:
+        return 0.0001
+    elif 20 <epoch<=50:
+        return 0.0001
+    else:
+        return 0.00001
+# epoch setting
+Epoch_Initial = 6
+Epochs = 100
+
 # predict
 HasObjThreshold = 0.5
-TIMESTAMP = "{0:%Y-%m-%dT%H-%M-%S/}".format(datetime.now())
 
 # debug
 DebugOutput = False
@@ -51,25 +90,13 @@ DebugOutput_NoObjectDelta = False
 DebugOutput_PredBox = False
 DebugOutput_loss = False
 
-# weight of loss
-LossWeight_Coordinate = 5.0
-LossWeight_NoObject = 0.5
-LossWeight_Object = 1.0
-LossWeight_Classes = 1.0
-
-# train data
-TrainPercentage = 0.8
-TrainBatchSize = 20
-ValBatchSize = 1
-Epochs = 75
-InitialEpoch = 20
-
-# model setting
-ReLU_Slope = 0.1
-Dropout_Image = 0.2
-Dropout_Output = 0.5
-
-# train super parameters
-LearningRate = 0.01
-Momentum = 0.9
-Decay = 0.0005
+# weight to restore
+RestoreWeightPath = ".log/2019-12-01T16-33-12/checkpoint/model_6.h5"
+# log directory
+LogDirectory_Root = os.path.join(".", ".log", TrainNameStamp)
+LogDirectory_Checkpoint = os.path.join(LogDirectory_Root, "checkpoint", "model_{epoch}.h5")
+LogDirectory_Tensorboard = os.path.join(LogDirectory_Root, "tensorboard")
+try:
+    os.makedirs(os.path.join(LogDirectory_Root, "checkpoint"))
+except FileExistsError:
+    pass
