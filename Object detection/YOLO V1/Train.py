@@ -9,12 +9,12 @@ from tensorflow.keras.callbacks import TensorBoard
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 print("Is there a GPU available:", tf.test.is_gpu_available())
-print("NameStamp:",Config.TrainNameStamp)
+print("NameStamp:", Config.TrainNameStamp)
 
 # create data loader
 data_set = PascalVOC()
 # create model
-model = yolo_model(model_type="INCEPTION V3 KERAS", show_summary=True)
+model = yolo_model(model_type="INCEPTION V3 KERAS", show_summary=False)
 
 # tensorboard support
 Callback_Tensorboard = TensorBoard(log_dir=Config.LogDirectory_Tensorboard,
@@ -58,43 +58,3 @@ model.fit_generator(generator=train_iter,
                                Callback_Scheduler],
                     verbose=1,
                     initial_epoch=Config.Epoch_Initial)
-
-# # save model
-# if input(">>> Finished. save ?(y/n): ") == "y":
-#     model.save("./.save/my_model.h5")
-#     print(">>> saved.")
-# else:
-#     print(">>> abort.")
-
-# TODO: Add Test.py
-# predict
-predict_data_iter = data_set.train_generator(batch_size=1)
-count = 0
-User_Threshold = input("Define current threshold: ")
-for image, label in predict_data_iter:
-    image = image["input"]
-    label = label["output"]
-    result = model.predict(image, batch_size=1)
-    for single_pred_result, single_true_result, current_image in zip(result, label, image):
-        image_out = DrawBoundingBox(single_pred_result,
-                                    current_image,
-                                    Config.BoxPerCell,
-                                    is_logits=True,
-                                    base_coordinate_of_xy="CELL",
-                                    threshold=float(User_Threshold))
-        image_out = DrawBoundingBox(single_true_result,
-                                    image_out,
-                                    1,
-                                    is_logits=False,
-                                    base_coordinate_of_xy="IMAGE",
-                                    color=(0, 0, 255))
-        image_out = cv.resize(image_out, (600, 600))
-        if Config.DebugOutput_Confidence:
-            print(result[..., :Config.BoxPerCell])
-
-        cv.imshow("out", image_out)
-        cv.waitKey()
-
-    count += 1
-    if count == 1000:
-        break

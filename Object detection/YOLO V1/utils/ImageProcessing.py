@@ -74,7 +74,7 @@ def DrawBoundingBox(label_array,
                     class_index = ii[5 * bbox_number]
                 cv.putText(img=image_to_process,
                            text=Config.Classes[int(class_index)] + " {:.2f}".format(np.amax(ii[:bbox_number])),
-                           org=(x1 + 10, y1 + 15),
+                           org=(x1 + 5, y1 + 10),
                            fontFace=cv.FONT_HERSHEY_SIMPLEX,
                            fontScale=0.5,
                            color=color)

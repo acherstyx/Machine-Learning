@@ -44,10 +44,9 @@ def yolo_model(model_type="TRANSFER", show_summary=False):
         hidden_layer = inception_feature_extractor.output
         # generate the output of the conventional network
         # without any dense layer
-        with tf.device("/CPU:0"):
-            hidden_layer = tf.keras.layers.GlobalAveragePooling2D()(hidden_layer)
-            hidden_layer = tf.keras.layers.Dropout(Config.Dropout_Output)(hidden_layer)
-            hidden_layer = tf.keras.layers.Flatten()(hidden_layer)
+        hidden_layer = tf.keras.layers.GlobalAveragePooling2D()(hidden_layer)
+        hidden_layer = tf.keras.layers.Dropout(Config.Dropout_Output)(hidden_layer)
+        hidden_layer = tf.keras.layers.Flatten()(hidden_layer)
     elif model_type == "ORIGINAL":
         # period 1 - reduce image size
         hidden_layer = tf.keras.layers.Conv2D(filters=64,
@@ -265,28 +264,25 @@ def yolo_model(model_type="TRANSFER", show_summary=False):
         raise TypeError
 
     # fully connected layers
-    with tf.device("/CPU:0"):
-        hidden_layer = tf.keras.layers.Dense(512,
-                                             kernel_initializer=tf.keras.initializers.TruncatedNormal(),
-                                             )(hidden_layer)
-        hidden_layer = tf.keras.layers.ReLU(max_value=1)(hidden_layer)
-        hidden_layer = tf.keras.layers.Dense(Config.CellSize * Config.CellSize * 30,
-                                             kernel_initializer=tf.keras.initializers.TruncatedNormal(),
-                                             )(hidden_layer)
-        # # use linear activation in output layer
-        # hidden_layer = tf.keras.layers.ReLU(max_value=1)(hidden_layer)
+    hidden_layer = tf.keras.layers.Dense(512,
+                                         )(hidden_layer)
+    hidden_layer = tf.keras.layers.ReLU(max_value=1)(hidden_layer)
+    hidden_layer = tf.keras.layers.Dense(Config.CellSize * Config.CellSize * 30,
+                                         )(hidden_layer)
+    # # use linear activation in output layer
+    # hidden_layer = tf.keras.layers.ReLU(max_value=1)(hidden_layer)
 
-        # reshape the output to the shape of [CellSize, CellSize, 30]
-        output = tf.keras.layers.Reshape((Config.CellSize,
-                                          Config.CellSize,
-                                          5 * Config.BoxPerCell + Config.ClassesNum),
-                                         name="output")(hidden_layer)
+    # reshape the output to the shape of [CellSize, CellSize, 30]
+    output = tf.keras.layers.Reshape((Config.CellSize,
+                                      Config.CellSize,
+                                      5 * Config.BoxPerCell + Config.ClassesNum),
+                                     name="output")(hidden_layer)
     # get model by define the input and output
     net_model = tf.keras.Model(inputs=input_layer,
                                outputs=output,
                                name="Yolo_Model")
     # set compile method
-    net_model.compile(optimizer=tf.keras.optimizers.SGD(Config.LearningRate, Config.Momentum, decay=Config.Decay),
+    net_model.compile(optimizer=tf.keras.optimizers.Adam(),
                       loss=yolo_loss)
     # show summary in text
     net_model.summary()

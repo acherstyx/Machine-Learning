@@ -20,13 +20,8 @@ Classes = ["aeroplane", "bicycle", "bird", "boat", "bottle",
 ClassesNum = len(Classes)
 ClassesDict = dict(zip(Classes, [i for i in range(ClassesNum)]))
 
-# label format
-# LabelBoxInfoIndex = [0, 4]
-# LabelHasObjIndex = 4
-# LabelClassIndex = 5
-
 # data save path
-LoadSavedData = False
+LoadSavedData = True
 TrainSavePath = "./.data/train_data.pkl"
 ValSavePath = "./.data/val_data.pkl"
 
@@ -39,42 +34,47 @@ Offset = np.transpose(Offset, (1, 2, 0))
 LossWeight_Coordinate = 5.0
 LossWeight_NoObject = 0.5
 LossWeight_Object = 1.0
-LossWeight_Classes = 1.5
+LossWeight_Classes = 2.0
 
 # network model setting
 ReLU_Slope = 0.1
-Dropout_Image = 0.2
-Dropout_Output = 0.5
+Dropout_Image = 0.0
+Dropout_Output = 0.0
 
 # train super parameters
 # TrainNameStamp = "{0:%Y-%m-%dT%H-%M-%S/}".format(datetime.now())
-TrainNameStamp = "2019-12-01T16-33-12"
+TrainNameStamp = "2019-12-02T22-17-32~?"
 # train data setting
 TrainPercentage = 0.8
 TrainBatchSize = 8
 ValBatchSize = 1
+
 # learning rate
 LearningRate = 0.0001
 Momentum = 0.9
 Decay = 0.0005
+
+
 # learning rate scheduler
 def scheduler(epoch):
     if epoch == 0:
         return 0.0001
-    elif epoch <= 10:
-        return 0.0002
-    elif epoch <= 20:
-        return 0.0001
-    elif 20 <epoch<=50:
+    elif epoch < 5:
+        return 0.0001 * (epoch + 1)
+    elif epoch < 75:
+        return 0.0005
+    elif 30 < epoch < 105:
         return 0.0001
     else:
         return 0.00001
+
+
 # epoch setting
-Epoch_Initial = 6
-Epochs = 100
+Epoch_Initial = 42
+Epochs = 135
 
 # predict
-HasObjThreshold = 0.5
+HasObjThreshold = 0.2
 
 # debug
 DebugOutput = False
@@ -91,7 +91,8 @@ DebugOutput_PredBox = False
 DebugOutput_loss = False
 
 # weight to restore
-RestoreWeightPath = ".log/2019-12-01T16-33-12/checkpoint/model_6.h5"
+RestoreWeightPath = ".log/2019-12-02T22-17-32~?/checkpoint/model_42.h5"
+RestoreWeightPath_Test = ".log/2019-12-02T22-17-32~?/checkpoint/model_45.h5"
 # log directory
 LogDirectory_Root = os.path.join(".", ".log", TrainNameStamp)
 LogDirectory_Checkpoint = os.path.join(LogDirectory_Root, "checkpoint", "model_{epoch}.h5")
