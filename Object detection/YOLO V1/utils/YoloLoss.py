@@ -27,6 +27,7 @@ def calc_iou(box1, box2):
                           axis=-1)
 
     # left up point and right down point of intersection
+
     left_up = tf.maximum(box1_point[..., :2], box2_point[..., :2])
     right_down = tf.minimum(box1_point[..., 2:], box2_point[..., 2:])
     # get area of intersection
@@ -38,12 +39,12 @@ def calc_iou(box1, box2):
     box2_area = box2[..., 2] * box2[..., 3]
 
     union_area = tf.maximum(box1_area + box2_area - intersection_area, 1e-10)
-    out = tf.clip_by_value(intersection_area / union_area, 0.0, 1.0)
-
+    out = tf.clip_by_value(intersection_area / union_area, 0.0, 1.0, name="current_iou")
+    tf.keras.backend.log(out)
     return out
 
 
-def yolo_loss(y_true, y_pred):
+def yolo_loss(y_true, y_pred, **kwargs):
     """
     calculate loss for yolo model output
     :param y_true: has a shape of batch_size*cell_size*cell_size*6 [x,y,w,h,conf,classes]
@@ -104,7 +105,7 @@ def yolo_loss(y_true, y_pred):
     if Config.DebugOutput_IOU:
         try:
             print(" - all iou in yolo loss function: ", iou_of_pred_and_true.numpy)
-            print(" - average iou in yolo loss function: ",tf.reduce_mean(iou_of_pred_and_true).numpy())
+            print(" - average iou in yolo loss function: ", tf.reduce_mean(iou_of_pred_and_true).numpy())
         except AttributeError:
             pass
 

@@ -1,16 +1,15 @@
 import cv2 as cv
 import numpy as np
 import utils.Config as Config
-from math import sqrt
 
 
-def DrawBoundingBox(label_array,
-                    image_to_process,
-                    bbox_number,
-                    base_coordinate_of_xy,
-                    is_logits,
-                    threshold=0.8,
-                    color=(0, 255, 0)):
+def draw_bounding_box(label_array,
+                      image_to_process,
+                      bbox_number,
+                      base_coordinate_of_xy,
+                      is_logits,
+                      threshold=0.8,
+                      color=(0, 255, 0)):
     """
     Draw the bounding box based on the predict result or label
     Note that the function do 'in-place editing' to the image
@@ -86,8 +85,6 @@ def DrawBoundingBox(label_array,
 
 
 if __name__ == "__main__":
-    # TODO: create new test case
-
     # load image data from Pascal VOC data set
     import utils.LoadPascalVOC as LoadPascalVoc
 
@@ -104,37 +101,36 @@ if __name__ == "__main__":
     current_image = current_image["input"][0]
     current_label = current_label["output"][0]
     # get labeled image
-    labeled_image = DrawBoundingBox(label_array=current_label,
-                                    image_to_process=current_image.copy(),
-                                    bbox_number=1,
-                                    base_coordinate_of_xy="IMAGE",
-                                    is_logits=False,
-                                    threshold=1.0,
-                                    color=(255,255,255),
-                                    )
+    labeled_image = draw_bounding_box(label_array=current_label,
+                                      image_to_process=current_image.copy(),
+                                      bbox_number=1,
+                                      base_coordinate_of_xy="IMAGE",
+                                      is_logits=False,
+                                      threshold=1.0,
+                                      color=(255, 255, 255),
+                                      )
     # show image
-    cv.imshow("Deal with label from dataset",np.hstack((current_image,labeled_image)))
+    cv.imshow("Deal with label from dataset", np.hstack((current_image, labeled_image)))
     cv.waitKey(2000)
 
     # generate output of neural network based on label
     print(">>> Show simulate label (logits, xy is image based)")
-    simulate_label = np.zeros([7,7,30],dtype=np.float)
-    simulate_label[...,1] = current_label[...,0]
-    simulate_label[...,6:10] = current_label[...,1:5]
+    simulate_label = np.zeros([7, 7, 30], dtype=np.float)
+    simulate_label[..., 1] = current_label[..., 0]
+    simulate_label[..., 6:10] = current_label[..., 1:5]
     for i in range(7):
         for ii in range(7):
-            if(np.asscalar(current_label[i,ii,0])==1):
-                simulate_label[i,ii,10+int(np.asscalar(current_label[i,ii,5]))] = 1.0
+            if (np.asscalar(current_label[i, ii, 0]) == 1):
+                simulate_label[i, ii, 10 + int(np.asscalar(current_label[i, ii, 5]))] = 1.0
     # get labeled image
-    labeled_image = DrawBoundingBox(label_array=simulate_label,
-                                    image_to_process=current_image.copy(),
-                                    bbox_number=2,
-                                    base_coordinate_of_xy="IMAGE",
-                                    is_logits=True,
-                                    threshold=1.0,
-                                    color=(0,255,0),
-                                    )
+    labeled_image = draw_bounding_box(label_array=simulate_label,
+                                      image_to_process=current_image.copy(),
+                                      bbox_number=2,
+                                      base_coordinate_of_xy="IMAGE",
+                                      is_logits=True,
+                                      threshold=1.0,
+                                      color=(0, 255, 0),
+                                      )
     # show image
-    cv.imshow("Deal with simulated label",np.hstack((current_image,labeled_image)))
+    cv.imshow("Deal with simulated label", np.hstack((current_image, labeled_image)))
     cv.waitKey(2000)
-    

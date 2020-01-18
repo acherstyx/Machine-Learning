@@ -38,21 +38,16 @@ LossWeight_Classes = 2.0
 
 # network model setting
 ReLU_Slope = 0.1
-Dropout_Image = 0.0
-Dropout_Output = 0.0
+Dropout_Image = 0.2
+Dropout_Output = 0.5
 
 # train super parameters
-# TrainNameStamp = "{0:%Y-%m-%dT%H-%M-%S/}".format(datetime.now())
-TrainNameStamp = "2019-12-02T22-17-32~?"
+TrainNameStamp = "{0:%Y-%m-%dT%H-%M-%S/}".format(datetime.now())
+# TrainNameStamp = "2019-12-02T22-17-32~?"
 # train data setting
 TrainPercentage = 0.8
-TrainBatchSize = 8
+TrainBatchSize = 10
 ValBatchSize = 1
-
-# learning rate
-LearningRate = 0.0001
-Momentum = 0.9
-Decay = 0.0005
 
 
 # learning rate scheduler
@@ -70,7 +65,7 @@ def scheduler(epoch):
 
 
 # epoch setting
-Epoch_Initial = 42
+Epoch_Initial = 0
 Epochs = 135
 
 # predict
@@ -91,8 +86,8 @@ DebugOutput_PredBox = False
 DebugOutput_loss = False
 
 # weight to restore
-RestoreWeightPath = ".log/2019-12-02T22-17-32~?/checkpoint/model_42.h5"
-RestoreWeightPath_Test = ".log/2019-12-02T22-17-32~?/checkpoint/model_45.h5"
+RestoreWeightPath = ".log/model.h5"
+RestoreWeightPath_Test = ".log/model.h5"
 # log directory
 LogDirectory_Root = os.path.join(".", ".log", TrainNameStamp)
 LogDirectory_Checkpoint = os.path.join(LogDirectory_Root, "checkpoint", "model_{epoch}.h5")

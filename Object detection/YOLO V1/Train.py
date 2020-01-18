@@ -1,11 +1,11 @@
 import os
 import tensorflow as tf
+from tensorflow.keras.callbacks import TensorBoard
 import utils.Config as Config
 from utils.LoadPascalVOC import PascalVOC
 from utils.Model import yolo_model
-from utils.ImageProcessing import DrawBoundingBox
-import cv2 as cv
-from tensorflow.keras.callbacks import TensorBoard
+
+
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 print("Is there a GPU available:", tf.test.is_gpu_available())
@@ -14,13 +14,16 @@ print("NameStamp:", Config.TrainNameStamp)
 # create data loader
 data_set = PascalVOC()
 # create model
-model = yolo_model(model_type="INCEPTION V3 KERAS", show_summary=False)
+model = yolo_model(model_type="INCEPTION V3", show_summary=False)
 
 # tensorboard support
 Callback_Tensorboard = TensorBoard(log_dir=Config.LogDirectory_Tensorboard,
                                    update_freq="batch",
+                                   write_graph=True,
                                    write_images=True,
+                                   histogram_freq=1
                                    )
+
 # checkpoint support
 Callback_Checkpoint = tf.keras.callbacks.ModelCheckpoint(filepath=Config.LogDirectory_Checkpoint,
                                                          save_best_only=False,
@@ -44,7 +47,7 @@ except ValueError:
 
 # data generator
 train_iter = data_set.train_generator(Config.TrainBatchSize)
-val_iter = data_set.train_generator(Config.ValBatchSize)
+val_iter = data_set.valid_generator(Config.ValBatchSize)
 # train
 model.fit_generator(generator=train_iter,
                     steps_per_epoch=data_set.TrainNum / Config.TrainBatchSize,
@@ -55,6 +58,7 @@ model.fit_generator(generator=train_iter,
                     validation_freq=1,
                     callbacks=[Callback_Tensorboard,
                                Callback_Checkpoint,
-                               Callback_Scheduler],
+                               Callback_Scheduler,
+                               ],
                     verbose=1,
                     initial_epoch=Config.Epoch_Initial)
