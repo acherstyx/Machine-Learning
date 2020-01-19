@@ -43,21 +43,20 @@ Dropout_Output = 0.5
 
 # train super parameters
 TrainNameStamp = "{0:%Y-%m-%dT%H-%M-%S/}".format(datetime.now())
-# TrainNameStamp = "2019-12-02T22-17-32~?"
 # train data setting
 TrainPercentage = 0.8
-TrainBatchSize = 10
-ValBatchSize = 1
+TrainBatchSize = 8
+ValBatchSize = 8
 
 
 # learning rate scheduler
 def scheduler(epoch):
     if epoch == 0:
-        return 0.0001
-    elif epoch < 5:
-        return 0.0001 * (epoch + 1)
-    elif epoch < 75:
         return 0.0005
+    elif epoch < 5:
+        return 0.0005 + 0.0001 * (epoch + 1)
+    elif epoch < 75:
+        return 0.001
     elif 30 < epoch < 105:
         return 0.0001
     else:

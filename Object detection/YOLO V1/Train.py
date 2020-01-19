@@ -14,7 +14,7 @@ print("NameStamp:", Config.TrainNameStamp)
 # create data loader
 data_set = PascalVOC()
 # create model
-model = yolo_model(model_type="INCEPTION V3", show_summary=False)
+model = yolo_model(model_type="ORIGINAL", show_summary=False)
 
 # tensorboard support
 Callback_Tensorboard = TensorBoard(log_dir=Config.LogDirectory_Tensorboard,

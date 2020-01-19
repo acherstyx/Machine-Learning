@@ -17,7 +17,6 @@ def yolo_model(model_type="TRANSFER", show_summary=False):
     @param show_summary: Show summary of the model
     @return: keras model
     """
-
     input_layer = tf.keras.Input(shape=(Config.ImageSize, Config.ImageSize, 3), name="input")
     hidden_layer = tf.keras.layers.Dropout(Config.Dropout_Image)(input_layer)
 
@@ -41,6 +40,7 @@ def yolo_model(model_type="TRANSFER", show_summary=False):
         hidden_layer = tf.keras.layers.Dropout(Config.Dropout_Output)(hidden_layer)
         hidden_layer = tf.keras.layers.Flatten()(hidden_layer)
     elif model_type == "ORIGINAL":
+        # period 1
         hidden_layer = tf.keras.layers.Conv2D(filters=64,
                                               kernel_size=(7, 7),
                                               strides=(2, 2),
@@ -48,6 +48,7 @@ def yolo_model(model_type="TRANSFER", show_summary=False):
                                               kernel_initializer=tf.keras.initializers.TruncatedNormal(),
                                               use_bias=False,
                                               )(hidden_layer)
+        hidden_layer = tf.keras.layers.BatchNormalization()(hidden_layer)
         hidden_layer = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(hidden_layer)
         hidden_layer = tf.keras.layers.MaxPool2D(pool_size=(2, 2),
                                                  strides=(2, 2),
@@ -60,18 +61,20 @@ def yolo_model(model_type="TRANSFER", show_summary=False):
                                               kernel_initializer=tf.keras.initializers.TruncatedNormal(),
                                               use_bias=False,
                                               )(hidden_layer)
+        hidden_layer = tf.keras.layers.BatchNormalization()(hidden_layer)
         hidden_layer = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(hidden_layer)
         hidden_layer = tf.keras.layers.MaxPool2D(pool_size=(2, 2),
                                                  strides=(2, 2),
                                                  padding="SAME",
                                                  )(hidden_layer)
-
+        # period 2
         hidden_layer = tf.keras.layers.Conv2D(filters=128,
                                               kernel_size=(1, 1),
                                               padding="SAME",
                                               kernel_initializer=tf.keras.initializers.TruncatedNormal(),
                                               use_bias=False,
                                               )(hidden_layer)
+        hidden_layer = tf.keras.layers.BatchNormalization()(hidden_layer)
         hidden_layer = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(hidden_layer)
         hidden_layer = tf.keras.layers.Conv2D(filters=256,
                                               kernel_size=(3, 3),
@@ -79,6 +82,7 @@ def yolo_model(model_type="TRANSFER", show_summary=False):
                                               kernel_initializer=tf.keras.initializers.TruncatedNormal(),
                                               use_bias=False,
                                               )(hidden_layer)
+        hidden_layer = tf.keras.layers.BatchNormalization()(hidden_layer)
         hidden_layer = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(hidden_layer)
         hidden_layer = tf.keras.layers.Conv2D(filters=256,
                                               kernel_size=(1, 1),
@@ -86,6 +90,7 @@ def yolo_model(model_type="TRANSFER", show_summary=False):
                                               kernel_initializer=tf.keras.initializers.TruncatedNormal(),
                                               use_bias=False,
                                               )(hidden_layer)
+        hidden_layer = tf.keras.layers.BatchNormalization()(hidden_layer)
         hidden_layer = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(hidden_layer)
         hidden_layer = tf.keras.layers.Conv2D(filters=512,
                                               kernel_size=(3, 3),
@@ -93,18 +98,20 @@ def yolo_model(model_type="TRANSFER", show_summary=False):
                                               kernel_initializer=tf.keras.initializers.TruncatedNormal(),
                                               use_bias=False,
                                               )(hidden_layer)
+        hidden_layer = tf.keras.layers.BatchNormalization()(hidden_layer)
         hidden_layer = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(hidden_layer)
         hidden_layer = tf.keras.layers.MaxPool2D(pool_size=(2, 2),
                                                  strides=(2, 2),
                                                  padding="SAME",
                                                  )(hidden_layer)
-
+        # period 3
         hidden_layer = tf.keras.layers.Conv2D(filters=256,
                                               kernel_size=(1, 1),
                                               padding="SAME",
                                               kernel_initializer=tf.keras.initializers.TruncatedNormal(),
                                               use_bias=False,
                                               )(hidden_layer)
+        hidden_layer = tf.keras.layers.BatchNormalization()(hidden_layer)
         hidden_layer = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(hidden_layer)
         hidden_layer = tf.keras.layers.Conv2D(filters=512,
                                               kernel_size=(3, 3),
@@ -112,6 +119,7 @@ def yolo_model(model_type="TRANSFER", show_summary=False):
                                               kernel_initializer=tf.keras.initializers.TruncatedNormal(),
                                               use_bias=False,
                                               )(hidden_layer)
+        hidden_layer = tf.keras.layers.BatchNormalization()(hidden_layer)
         hidden_layer = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(hidden_layer)
         hidden_layer = tf.keras.layers.Conv2D(filters=256,
                                               kernel_size=(1, 1),
@@ -119,6 +127,7 @@ def yolo_model(model_type="TRANSFER", show_summary=False):
                                               kernel_initializer=tf.keras.initializers.TruncatedNormal(),
                                               use_bias=False,
                                               )(hidden_layer)
+        hidden_layer = tf.keras.layers.BatchNormalization()(hidden_layer)
         hidden_layer = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(hidden_layer)
         hidden_layer = tf.keras.layers.Conv2D(filters=512,
                                               kernel_size=(3, 3),
@@ -126,6 +135,7 @@ def yolo_model(model_type="TRANSFER", show_summary=False):
                                               kernel_initializer=tf.keras.initializers.TruncatedNormal(),
                                               use_bias=False,
                                               )(hidden_layer)
+        hidden_layer = tf.keras.layers.BatchNormalization()(hidden_layer)
         hidden_layer = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(hidden_layer)
         hidden_layer = tf.keras.layers.Conv2D(filters=256,
                                               kernel_size=(1, 1),
@@ -133,6 +143,7 @@ def yolo_model(model_type="TRANSFER", show_summary=False):
                                               kernel_initializer=tf.keras.initializers.TruncatedNormal(),
                                               use_bias=False,
                                               )(hidden_layer)
+        hidden_layer = tf.keras.layers.BatchNormalization()(hidden_layer)
         hidden_layer = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(hidden_layer)
         hidden_layer = tf.keras.layers.Conv2D(filters=512,
                                               kernel_size=(3, 3),
@@ -140,6 +151,7 @@ def yolo_model(model_type="TRANSFER", show_summary=False):
                                               kernel_initializer=tf.keras.initializers.TruncatedNormal(),
                                               use_bias=False,
                                               )(hidden_layer)
+        hidden_layer = tf.keras.layers.BatchNormalization()(hidden_layer)
         hidden_layer = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(hidden_layer)
         hidden_layer = tf.keras.layers.Conv2D(filters=256,
                                               kernel_size=(1, 1),
@@ -147,6 +159,7 @@ def yolo_model(model_type="TRANSFER", show_summary=False):
                                               kernel_initializer=tf.keras.initializers.TruncatedNormal(),
                                               use_bias=False,
                                               )(hidden_layer)
+        hidden_layer = tf.keras.layers.BatchNormalization()(hidden_layer)
         hidden_layer = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(hidden_layer)
         hidden_layer = tf.keras.layers.Conv2D(filters=512,
                                               kernel_size=(3, 3),
@@ -154,6 +167,7 @@ def yolo_model(model_type="TRANSFER", show_summary=False):
                                               kernel_initializer=tf.keras.initializers.TruncatedNormal(),
                                               use_bias=False,
                                               )(hidden_layer)
+        hidden_layer = tf.keras.layers.BatchNormalization()(hidden_layer)
         hidden_layer = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(hidden_layer)
         hidden_layer = tf.keras.layers.Conv2D(filters=512,
                                               kernel_size=(1, 1),
@@ -161,6 +175,7 @@ def yolo_model(model_type="TRANSFER", show_summary=False):
                                               kernel_initializer=tf.keras.initializers.TruncatedNormal(),
                                               use_bias=False,
                                               )(hidden_layer)
+        hidden_layer = tf.keras.layers.BatchNormalization()(hidden_layer)
         hidden_layer = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(hidden_layer)
         hidden_layer = tf.keras.layers.Conv2D(filters=1024,
                                               kernel_size=(3, 3),
@@ -168,18 +183,20 @@ def yolo_model(model_type="TRANSFER", show_summary=False):
                                               kernel_initializer=tf.keras.initializers.TruncatedNormal(),
                                               use_bias=False,
                                               )(hidden_layer)
+        hidden_layer = tf.keras.layers.BatchNormalization()(hidden_layer)
         hidden_layer = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(hidden_layer)
         hidden_layer = tf.keras.layers.MaxPool2D(pool_size=(2, 2),
                                                  strides=(2, 2),
                                                  padding="SAME",
                                                  )(hidden_layer)
-
+        # period 4
         hidden_layer = tf.keras.layers.Conv2D(filters=512,
                                               kernel_size=(1, 1),
                                               padding="SAME",
                                               kernel_initializer=tf.keras.initializers.TruncatedNormal(),
                                               use_bias=False,
                                               )(hidden_layer)
+        hidden_layer = tf.keras.layers.BatchNormalization()(hidden_layer)
         hidden_layer = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(hidden_layer)
         hidden_layer = tf.keras.layers.Conv2D(filters=1024,
                                               kernel_size=(3, 3),
@@ -187,6 +204,7 @@ def yolo_model(model_type="TRANSFER", show_summary=False):
                                               kernel_initializer=tf.keras.initializers.TruncatedNormal(),
                                               use_bias=False,
                                               )(hidden_layer)
+        hidden_layer = tf.keras.layers.BatchNormalization()(hidden_layer)
         hidden_layer = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(hidden_layer)
         hidden_layer = tf.keras.layers.Conv2D(filters=512,
                                               kernel_size=(1, 1),
@@ -194,6 +212,7 @@ def yolo_model(model_type="TRANSFER", show_summary=False):
                                               kernel_initializer=tf.keras.initializers.TruncatedNormal(),
                                               use_bias=False,
                                               )(hidden_layer)
+        hidden_layer = tf.keras.layers.BatchNormalization()(hidden_layer)
         hidden_layer = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(hidden_layer)
         hidden_layer = tf.keras.layers.Conv2D(filters=1024,
                                               kernel_size=(3, 3),
@@ -201,6 +220,7 @@ def yolo_model(model_type="TRANSFER", show_summary=False):
                                               kernel_initializer=tf.keras.initializers.TruncatedNormal(),
                                               use_bias=False,
                                               )(hidden_layer)
+        hidden_layer = tf.keras.layers.BatchNormalization()(hidden_layer)
         hidden_layer = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(hidden_layer)
         hidden_layer = tf.keras.layers.Conv2D(filters=1024,
                                               kernel_size=(3, 3),
@@ -208,6 +228,7 @@ def yolo_model(model_type="TRANSFER", show_summary=False):
                                               kernel_initializer=tf.keras.initializers.TruncatedNormal(),
                                               use_bias=False,
                                               )(hidden_layer)
+        hidden_layer = tf.keras.layers.BatchNormalization()(hidden_layer)
         hidden_layer = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(hidden_layer)
         hidden_layer = tf.keras.layers.Conv2D(filters=1024,
                                               kernel_size=(3, 3),
@@ -216,6 +237,7 @@ def yolo_model(model_type="TRANSFER", show_summary=False):
                                               kernel_initializer=tf.keras.initializers.TruncatedNormal(),
                                               use_bias=False,
                                               )(hidden_layer)
+        hidden_layer = tf.keras.layers.BatchNormalization()(hidden_layer)
         hidden_layer = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(hidden_layer)
         # period 5
         hidden_layer = tf.keras.layers.Conv2D(filters=1024,
@@ -224,6 +246,7 @@ def yolo_model(model_type="TRANSFER", show_summary=False):
                                               kernel_initializer=tf.keras.initializers.TruncatedNormal(),
                                               use_bias=False
                                               )(hidden_layer)
+        hidden_layer = tf.keras.layers.BatchNormalization()(hidden_layer)
         hidden_layer = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(hidden_layer)
         hidden_layer = tf.keras.layers.Conv2D(filters=1024,
                                               kernel_size=(3, 3),
@@ -231,8 +254,9 @@ def yolo_model(model_type="TRANSFER", show_summary=False):
                                               kernel_initializer=tf.keras.initializers.TruncatedNormal(),
                                               use_bias=False
                                               )(hidden_layer)
+        hidden_layer = tf.keras.layers.BatchNormalization()(hidden_layer)
         hidden_layer = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(hidden_layer)
-        hidden_layer = tf.keras.layers.MaxPool2D(pool_size=(7, 7),
+        hidden_layer = tf.keras.layers.MaxPool2D(pool_size=(6, 6),
                                                  strides=(1, 1),
                                                  padding="valid")(hidden_layer)
         hidden_layer = tf.keras.layers.Dropout(Config.Dropout_Output)(hidden_layer)

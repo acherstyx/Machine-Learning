@@ -145,7 +145,7 @@ def yolo_loss(y_true, y_pred, **kwargs):
             pass
 
     # no object loss
-    no_obj_delta = tf.square(no_obj_mask * pred_confidence)
+    no_obj_delta = tf.square(pred_confidence * no_obj_mask)
     no_obj_loss = tf.reduce_mean(
         tf.reduce_sum(no_obj_delta, axis=[1, 2, 3])
     )
