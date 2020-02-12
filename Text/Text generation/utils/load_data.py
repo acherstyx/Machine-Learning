@@ -43,21 +43,3 @@ def split_train_sample(batched_data: tf.data.Dataset, shift=1) -> tf.data.Datase
         return single_batch[:-shift], single_batch[shift:]
 
     return batched_data.map(split)
-
-
-WINDOWS_SIZE = 100
-SHIFT = 1
-
-sample_dataset, sample_dict = load_text_single_ver(
-    tf.keras.utils.get_file('shakespeare.txt',
-                            'https://storage.googleapis.com/download.tensorflow.org/data/shakespeare.txt')
-)
-sample_dataset = split_train_sample(
-    make_batch_dataset(sample_dataset, WINDOWS_SIZE, SHIFT),
-    shift=SHIFT,
-)
-
-# ii = 0
-# for i in sample_dataset.batch(64,drop_remainder=True):
-#     ii+=1
-#     print(ii)
