@@ -8,7 +8,6 @@ class RealTimeIOU(tf.keras.metrics.Metric):
     def __init__(self, name="iou_delta", **kwargs):
         super(RealTimeIOU, self).__init__(name=name, **kwargs)
         self.iou = self.add_weight(name="iou", initializer="zeros")
-        self.niou = self.add_weight(name="niou", initializer="zeros")
 
     def update_state(self, y_true, y_pred, *args, **kwargs):
         y_true = tf.cast(y_true, tf.float32)
@@ -53,10 +52,8 @@ class RealTimeIOU(tf.keras.metrics.Metric):
             (iou_of_pred_and_true >= obj_mask),
             tf.float32
         ) * true_confidence
-        no_obj_mask = tf.ones_like(obj_mask, dtype=tf.float32) - obj_mask
 
         self.iou.assign(tf.reduce_sum(iou_of_pred_and_true * obj_mask) / tf.reduce_sum(obj_mask))
-        self.niou.assign(tf.reduce_sum(iou_of_pred_and_true * no_obj_mask) / tf.reduce_sum(no_obj_mask))
 
     def result(self):
-        return self.iou - self.niou
+        return self.iou

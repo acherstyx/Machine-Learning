@@ -256,22 +256,17 @@ def yolo_model(model_type="TRANSFER", show_summary=False):
                                               )(hidden_layer)
         hidden_layer = tf.keras.layers.BatchNormalization()(hidden_layer)
         hidden_layer = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(hidden_layer)
-        hidden_layer = tf.keras.layers.MaxPool2D(pool_size=(6, 6),
-                                                 strides=(1, 1),
-                                                 padding="valid")(hidden_layer)
+        hidden_layer = tf.keras.layers.GlobalAveragePooling2D()(hidden_layer)
         hidden_layer = tf.keras.layers.Dropout(Config.Dropout_Output)(hidden_layer)
         hidden_layer = tf.keras.layers.Flatten()(hidden_layer)
-        hidden_layer = tf.keras.layers.Dense(4096,
-                                             kernel_initializer=tf.keras.initializers.TruncatedNormal(),
-                                             )(hidden_layer)
-        hidden_layer = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(hidden_layer)
     else:
         raise TypeError
 
     # fully connected layers for classification and regression
-    hidden_layer = tf.keras.layers.Dense(512,
+    hidden_layer = tf.keras.layers.Dense(4096,
+                                         kernel_initializer=tf.keras.initializers.TruncatedNormal(),
                                          )(hidden_layer)
-    hidden_layer = tf.keras.layers.ReLU(max_value=1, )(hidden_layer)
+    hidden_layer = tf.keras.layers.ReLU(negative_slope=Config.ReLU_Slope)(hidden_layer)
     hidden_layer = tf.keras.layers.Dense(Config.CellSize * Config.CellSize * 30,
                                          )(hidden_layer)
     # # use linear result in output layer
@@ -305,4 +300,4 @@ def yolo_model(model_type="TRANSFER", show_summary=False):
 
 if __name__ == "__main__":
     print("Is there a GPU available: ", tf.test.is_gpu_available())
-    model = yolo_model(model_type="INCEPTION V3", show_summary=True)
+    model = yolo_model(model_type="ORIGINAL", show_summary=True)

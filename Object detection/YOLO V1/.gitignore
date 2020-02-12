@@ -1,5 +1,8 @@
-coco/
+.coco/
 pascal voc/
-VOCdevkit/
+.VOCdevkit/
 .gitignore
 .data/
+*.png
+NeuralNetworkModel.py
+.old/

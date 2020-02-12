@@ -6,17 +6,22 @@ from utils.LoadPascalVOC import PascalVOC
 from utils.ImageProcessing import draw_bounding_box
 import cv2 as cv
 import utils.Config as Config
+from utils.MyMetrics import RealTimeIOU
+from utils.Model import yolo_model
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 # create data loader
 data_set = PascalVOC()
 # restore entire model from saved data
-model = tf.keras.models.load_model(Config.RestoreWeightPath_Test, custom_objects={'yolo_loss': yolo_loss})
+model = yolo_model("ORIGINAL")
+mymetric = RealTimeIOU()
+model = tf.keras.models.load_model(Config.RestoreWeightPath_Test,
+                                   compile=False)
 print("Model restored from", Config.RestoreWeightPath_Test)
 
 # predict
-predict_data_iter = data_set.valid_generator(batch_size=1)
+predict_data_iter = data_set.train_generator(batch_size=1)
 count = 0
 User_Threshold = input("Define current threshold: ")
 for image, label in predict_data_iter:

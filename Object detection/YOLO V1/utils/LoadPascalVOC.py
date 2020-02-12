@@ -118,7 +118,7 @@ class PascalVOC:
                 continue
             else:
                 object_counter += 1
-            # format: confidence[0] x,y,w,h[0:4] classes[5]
+            # format: confidence[0] x,y,w,h[1:5] classes[5]
             label_temp[cell_y, cell_x, 0] = 1
             label_temp[cell_y, cell_x, 1:5] = [i / Config.ImageSize for i in box_info]
             label_temp[cell_y, cell_x, 5] = class_id

@@ -6,6 +6,14 @@ import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 
+def __unpack_box(box):
+    return tf.stack([box[..., 0] - box[..., 2] / 2.0,
+                     box[..., 1] - box[..., 3] / 2.0,
+                     box[..., 0] + box[..., 2] / 2.0,
+                     box[..., 1] + box[..., 3] / 2.0],
+                    axis=-1)
+
+
 def calc_iou(box1, box2):
     """
     calculate IoU of 2 bound box
@@ -15,16 +23,8 @@ def calc_iou(box1, box2):
     return
         iou: [batch_size,cell_size,cell_size,box_pre_cell]
     """
-    box1_point = tf.stack([box1[..., 0] - box1[..., 2] / 2.0,
-                           box1[..., 1] - box1[..., 3] / 2.0,
-                           box1[..., 0] + box1[..., 2] / 2.0,
-                           box1[..., 1] + box1[..., 3] / 2.0],
-                          axis=-1)
-    box2_point = tf.stack([box2[..., 0] - box2[..., 2] / 2.0,
-                           box2[..., 1] - box2[..., 3] / 2.0,
-                           box2[..., 0] + box2[..., 2] / 2.0,
-                           box2[..., 1] + box2[..., 3] / 2.0],
-                          axis=-1)
+    box1_point = __unpack_box(box1)
+    box2_point = __unpack_box(box2)
 
     # left up point and right down point of intersection
 
@@ -47,7 +47,7 @@ def calc_iou(box1, box2):
 def yolo_loss(y_true, y_pred, **kwargs):
     """
     calculate loss for yolo model output
-    :param y_true: has a shape of batch_size*cell_size*cell_size*6 [x,y,w,h,conf,classes]
+    :param y_true: has a shape of batch_size*cell_size*cell_size*6 [conf,x,y,w,h,classes]
     :param y_pred: has a shape of batch_size*cell_size*cell_size*30 [conf,conf,x,y,w,h,x,y,w,h,classes...]
     :return: loss
     """
@@ -77,6 +77,7 @@ def yolo_loss(y_true, y_pred, **kwargs):
 
     # get offset
     offset = tf.constant(Config.Offset, dtype=tf.float32)
+
     offset = tf.reshape(offset, (1, Config.CellSize, Config.CellSize, Config.BoxPerCell))
     try:
         offset = tf.tile(offset, [batch_size, 1, 1, 1])
@@ -91,6 +92,7 @@ def yolo_loss(y_true, y_pred, **kwargs):
                                      tf.square(pred_bbox_cell_base[..., 3])],
                                     axis=-1
                                     )
+
     # Image-based coordinates -> Cell-based coordinates, for loss
     true_bbox_cell_base = tf.stack([true_bbox_image_base[..., 0] * Config.CellSize - offset,
                                     true_bbox_image_base[..., 1] * Config.CellSize - offset_t,
@@ -174,10 +176,8 @@ def yolo_loss(y_true, y_pred, **kwargs):
         except AttributeError:
             pass
 
-    return object_loss * Config.LossWeight_Object + \
-           no_obj_loss * Config.LossWeight_NoObject + \
-           bbox_loss * Config.LossWeight_Coordinate + \
-           classes_loss * Config.LossWeight_Classes
+    return object_loss * Config.LossWeight_Object + no_obj_loss * Config.LossWeight_NoObject + \
+           bbox_loss * Config.LossWeight_Coordinate + classes_loss * Config.LossWeight_Classes
 
 
 if __name__ == "__main__":

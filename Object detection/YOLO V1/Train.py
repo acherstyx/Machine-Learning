@@ -5,8 +5,6 @@ import utils.Config as Config
 from utils.LoadPascalVOC import PascalVOC
 from utils.Model import yolo_model
 
-
-
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 print("Is there a GPU available:", tf.test.is_gpu_available())
 print("NameStamp:", Config.TrainNameStamp)
