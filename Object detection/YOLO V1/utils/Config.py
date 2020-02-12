@@ -1,12 +1,14 @@
 # pascal voc path
 import numpy as np
 from datetime import datetime
+import os
 
+# directory of data set
 ImagePath = "./.VOCdevkit/VOC2012/JPEGImages"
 AnnotationsPath = "./.VOCdevkit/VOC2012/Annotations/"
 
 # image segmentation setting
-ImageSize = 299
+ImageSize = 448
 CellSize = 7
 BoxPerCell = 2
 
@@ -18,12 +20,7 @@ Classes = ["aeroplane", "bicycle", "bird", "boat", "bottle",
 ClassesNum = len(Classes)
 ClassesDict = dict(zip(Classes, [i for i in range(ClassesNum)]))
 
-# label format
-LabelBoxInfoIndex = [0, 4]
-LabelHasObjIndex = 4
-LabelClassIndex = 5
-
-# data save
+# data save path
 LoadSavedData = True
 TrainSavePath = "./.data/train_data.pkl"
 ValSavePath = "./.data/val_data.pkl"
@@ -33,9 +30,45 @@ Offset = np.array([np.arange(CellSize)] * CellSize * BoxPerCell)
 Offset = np.reshape(Offset, (BoxPerCell, CellSize, CellSize))
 Offset = np.transpose(Offset, (1, 2, 0))
 
+# weight of loss
+LossWeight_Coordinate = 5.0
+LossWeight_NoObject = 0.5
+LossWeight_Object = 1.0
+LossWeight_Classes = 1.0
+
+# network model setting
+ReLU_Slope = 0.1
+Dropout_Image = 0.0
+Dropout_Output = 0.0
+
+# train super parameters
+TrainNameStamp = "{0:%Y-%m-%dT%H-%M-%S/}".format(datetime.now())
+# train data setting
+TrainPercentage = 0.8
+TrainBatchSize = 8
+ValBatchSize = 8
+
+
+# learning rate scheduler
+def scheduler(epoch):
+    if epoch == 0:
+        return 0.0001
+    elif epoch < 30:
+        return 0.0001 # + 0.0001 * epoch
+    elif epoch < 70:
+        return 0.00005
+    elif epoch < 105:
+        return 0.00005
+    else:
+        return 0.00001
+
+
+# epoch setting
+Epoch_Initial = 0
+Epochs = 135
+
 # predict
-HasObjThreshold = 0.5
-TIMESTAMP = "{0:%Y-%m-%dT%H-%M-%S/}".format(datetime.now())
+HasObjThreshold = 0.2
 
 # debug
 DebugOutput = False
@@ -51,25 +84,14 @@ DebugOutput_NoObjectDelta = False
 DebugOutput_PredBox = False
 DebugOutput_loss = False
 
-# weight of loss
-LossWeight_Coordinate = 5.0
-LossWeight_NoObject = 0.5
-LossWeight_Object = 1.0
-LossWeight_Classes = 1.0
-
-# train data
-TrainPercentage = 0.8
-TrainBatchSize = 20
-ValBatchSize = 1
-Epochs = 75
-InitialEpoch = 20
-
-# model setting
-ReLU_Slope = 0.1
-Dropout_Image = 0.2
-Dropout_Output = 0.5
-
-# train super parameters
-LearningRate = 0.01
-Momentum = 0.9
-Decay = 0.0005
+# weight to restore
+RestoreWeightPath = ".log/model.h5"
+RestoreWeightPath_Test = ".log/2020-01-27T00-11-26/checkpoint/model_24.h5"
+# log directory
+LogDirectory_Root = os.path.join(".", ".log", TrainNameStamp)
+LogDirectory_Checkpoint = os.path.join(LogDirectory_Root, "checkpoint", "model_{epoch}.h5")
+LogDirectory_Tensorboard = os.path.join(LogDirectory_Root, "tensorboard")
+try:
+    os.makedirs(os.path.join(LogDirectory_Root, "checkpoint"))
+except FileExistsError:
+    pass

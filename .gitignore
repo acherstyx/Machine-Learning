@@ -13,7 +13,14 @@
 # data set
 .init_dataset/
 .dataset/
+.data/
 *.csv
+
+# Pascal VOC
+VOCdevkit/
+coco/
+pascal voc/
+
 
 # haar cascade classifier
 .haarcascade
