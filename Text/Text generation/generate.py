@@ -7,7 +7,7 @@ from utils import load_data
 from model import simple_gru as rnn_model
 import tensorflow as tf
 
-from train import vec2word
+_, vec2word = load_data.load_text_single_ver(TEXT_FILE_PATH)
 
 model = rnn_model.build_model(len(vec2word), EMBEDDING_DIM, RNN_UNITES, 1)
 model.load_weights(tf.train.latest_checkpoint(CHECKPOINT_ROOT))
@@ -38,4 +38,4 @@ def generate_text(trained_model, start_string, vec2word_dict, num_generate):
     return start_string + ''.join(text_generated)
 
 
-print(generate_text(model, start_string=u"ROMEO: ", vec2word_dict=vec2word, num_generate=1000))
+print(generate_text(model, start_string=START_STRING, vec2word_dict=vec2word, num_generate=NUM_GENERATE))
