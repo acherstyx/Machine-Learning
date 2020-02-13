@@ -4,7 +4,7 @@ import os
 TEXT_FILE_PATH = "three_body.txt"
 WINDOWS_SIZE = 100
 SHIFT = 1
-BATCH_SIZE = 64
+BATCH_SIZE = 256
 SHUFFLE_BUFFER_SIZE = 1000
 
 # model
@@ -14,11 +14,11 @@ RNN_UNITES = 1024
 # save
 CHECKPOINT_SHIFT = TEXT_FILE_PATH[:-4]
 CHECKPOINT_ROOT = os.path.join(".log", CHECKPOINT_SHIFT)
-CHECKPOINT_PATH = os.path.join(CHECKPOINT_ROOT, CHECKPOINT_SHIFT, "checkpoint_{epoch}")
+CHECKPOINT_PATH = os.path.join(CHECKPOINT_ROOT, "checkpoint_{epoch}")
 
 # train
 EPOCHS = 30
 
 # generate
 NUM_GENERATE = 3000
-START_STRING = u"蒙娜丽莎"
+START_STRING = u"罗辑"
