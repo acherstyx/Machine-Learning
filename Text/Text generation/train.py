@@ -7,10 +7,7 @@ from utils import load_data
 from model import simple_gru as rnn_model
 import tensorflow as tf
 
-dataset, vec2word = load_data.load_text_single_ver(
-    tf.keras.utils.get_file('shakespeare.txt',
-                            'https://storage.googleapis.com/download.tensorflow.org/data/shakespeare.txt')
-)
+dataset, vec2word = load_data.load_text_single_ver(TEXT_FILE_PATH)
 dataset = load_data.split_train_sample(
     load_data.make_batch_dataset(dataset, WINDOWS_SIZE, SHIFT),
     shift=SHIFT,
