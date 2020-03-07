@@ -1,39 +1,5 @@
-# ide
-.vs/
-
-# vscode settings
-.vscode/
-
-# pycharm settings
-.idea/
-
-# pre trained model
-.ckpt/
-
-# data set
-.init_dataset/
-.dataset/
-.data/
-*.csv
-
-# Pascal VOC
-VOCdevkit/
-coco/
-pascal voc/
-
-
-# haar cascade classifier
-.haarcascade
-
-# log
-.his/
-.log/
-
-# saved model
-.model/
-.save/
-
-# =====
+logs/
+.*/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
