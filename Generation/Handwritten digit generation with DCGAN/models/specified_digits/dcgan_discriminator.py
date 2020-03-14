@@ -6,14 +6,17 @@ from models.random_noise.dcgan_discriminator import DCGANDiscriminator as DCGAND
 class DCGANDiscriminator(DCGANDiscriminatorPreDefine):
 
     def build(self):
-        input_digits = layers.Input(shape=(1,), dtype=tf.float32)
+        input_digits = layers.Input(shape=(10,), dtype=tf.float32)  # one_hot
         input_image = layers.Input(shape=(28, 28, 1), dtype=tf.float32)
 
         input_image_flat = layers.Flatten()(input_image)
         inputs = layers.concatenate([input_digits, input_image_flat])
+        assert tuple(inputs.shape) == (None, 28 * 28 + 10)
 
         hidden_layer = layers.Dense(28 * 28)(inputs)
+        hidden_layer = layers.BatchNormalization()(hidden_layer)
         hidden_layer = layers.Reshape((28, 28, 1))(hidden_layer)
+
         hidden_layer = layers.Conv2D(filters=16,
                                      kernel_size=(5, 5),
                                      padding="SAME",
@@ -44,7 +47,3 @@ class DCGANDiscriminator(DCGANDiscriminatorPreDefine):
         hidden_layer = layers.Dense(1)(hidden_layer)
 
         self.model = Model(inputs=[input_digits, input_image], outputs=hidden_layer, name="discriminator")
-
-    @staticmethod
-    def __generator_loss():
-        pass

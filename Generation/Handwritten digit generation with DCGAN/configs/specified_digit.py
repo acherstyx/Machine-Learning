@@ -4,7 +4,7 @@ class DataLoaderConfig:
 
 
 class GeneratorConfig:
-    NOISE_DIM = 2
+    NOISE_DIM = 20
 
 
 class TrainerConfig:
@@ -19,12 +19,12 @@ class TrainerConfig:
 
     GIF_NAME = "generate_history.gif"
 
-    GENERATOR_LEARNING_RATE = 5e-5
-    DISCRIMINATOR_LEARNING_RATE = 5e-5
+    GENERATOR_LEARNING_RATE = 1e-4
+    DISCRIMINATOR_LEARNING_RATE = 1e-4
 
     TOTAL_IMAGES = 70000
 
-    CHECKPOINT_SAVE_FREQUENCY = 1
+    CHECKPOINT_SAVE_FREQUENCY = 5
 
     # reuse
     BATCH_SIZE = DataLoaderConfig.BATCH_SIZE

@@ -41,11 +41,12 @@ class Trainer(TrainerPreDefine):
                                                      total=self.config.TOTAL_IMAGES / self.config.BATCH_SIZE,
                                                      desc="Epoch {:02d}".format(epoch + 1),
                                                      ncols=65):
-                batch_label = tf.reshape(tf.cast(batch_label_int, tf.float32), [-1, 1])
+                batch_label = tf.one_hot(batch_label_int, 10)
+                assert tuple(batch_label.shape) == (64, 10)
                 self.__dcgan_special_train_step(batch_image, batch_label)
 
+            self.generate_preview(epoch=epoch)
             if (epoch + 1) % self.config.CHECKPOINT_SAVE_FREQUENCY == 0:
-                self.generate_preview(epoch=epoch)
                 checkpoint.save(file_prefix=checkpoint_path)
 
         self.generate_gif()
@@ -54,8 +55,11 @@ class Trainer(TrainerPreDefine):
         fig = plt.figure(figsize=(10, 1))
         tf.random.set_seed(self.config.RANDOM_SEED)
 
-        specified_number = tf.constant([[0], [1], [2], [3], [4], [5], [6], [7], [8], [9]],
-                                       dtype=tf.float32)
+        specified_number = tf.constant([0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+                                       dtype=tf.int32)
+        specified_number = tf.one_hot(specified_number, 10)
+
+        assert tuple(specified_number.shape) == (10, 10)
         default_noise = tf.random.normal([10, self.config.NOISE_DIM])
 
         for i in range(10):

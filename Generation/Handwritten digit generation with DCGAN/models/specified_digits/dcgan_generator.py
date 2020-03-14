@@ -6,29 +6,29 @@ from models.random_noise.dcgan_generator import DCGANGenerator as DCGANGenerator
 class DCGANGenerator(DCGANGeneratorPreDefine):
 
     def build(self):
-        input_specified_number = layers.Input(shape=[1, ], dtype=tf.float32)
+        input_digit = layers.Input(shape=[10, ], dtype=tf.float32)  # one_hot
         input_noise = layers.Input(shape=self.config.NOISE_DIM,
                                    dtype=tf.float32)
 
         inputs = tf.concat(
-            values=[input_specified_number, input_noise],
+            values=[input_digit, input_noise],
             axis=1
         )
-        assert tuple(inputs.shape) == (None, 1+self.config.NOISE_DIM)
+        assert tuple(inputs.shape) == (None, 10 + self.config.NOISE_DIM)
 
         hidden_layer = layers.Dense(7 * 7 * 256)(inputs)
-        hidden_layer = layers.BatchNormalization()(hidden_layer)
         hidden_layer = layers.Reshape(target_shape=(7, 7, 256))(hidden_layer)
+        hidden_layer = layers.BatchNormalization()(hidden_layer)
 
         hidden_layer = layers.Conv2DTranspose(filters=64,
-                                              kernel_size=(2, 2),
+                                              kernel_size=(5, 5),
                                               padding="SAME")(hidden_layer)
         hidden_layer = layers.BatchNormalization()(hidden_layer)
         hidden_layer = layers.LeakyReLU()(hidden_layer)
         assert tuple(hidden_layer.shape) == (None, 7, 7, 64)
 
         hidden_layer = layers.Conv2DTranspose(filters=16,
-                                              kernel_size=(2, 2),
+                                              kernel_size=(5, 5),
                                               padding="SAME",
                                               strides=(2, 2))(hidden_layer)
         hidden_layer = layers.BatchNormalization()(hidden_layer)
@@ -42,6 +42,6 @@ class DCGANGenerator(DCGANGeneratorPreDefine):
                                               strides=(2, 2))(hidden_layer)
         assert tuple(hidden_layer.shape) == (None, 28, 28, 1)
 
-        self.model = Model(inputs=[input_specified_number, input_noise],
+        self.model = Model(inputs=[input_digit, input_noise],
                            outputs=hidden_layer,
                            name="generator")
