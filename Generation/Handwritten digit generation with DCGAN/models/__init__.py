@@ -1,1 +1,1 @@
-__all__ = ["dcgan_generator","dcgan_discriminator"]
+__all__ = ["random_noise","specified_digits"]
