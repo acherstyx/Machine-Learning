@@ -6,6 +6,23 @@ from utils.data_augmentation import *
 from utils.image_io import *
 
 
+class DataLoaderConfig:
+    def __init__(self,
+                 resize_up_size,
+                 output_size,
+                 buffer_size,
+                 batch_size,
+                 test_batch_size):
+        # used in __random_jitter
+        self.RESIZE_UP_SIZE = resize_up_size  # the resolution will go up to RESIZE_UP_SIZE first
+        self.OUTPUT_SIZE = output_size  # randomly cropped to OUTPUT_SIZE
+
+        # dataset config
+        self.BUFFER_SIZE = buffer_size  # random buffer
+        self.BATCH_SIZE = batch_size
+        self.TEST_BATCH_SIZE = test_batch_size
+
+
 class DataLoader(DataLoaderTemplate):
 
     def __init__(self, config):
@@ -19,7 +36,7 @@ class DataLoader(DataLoaderTemplate):
         :param image_file: image path
         :return: image
         """
-        image_merged = read_image(image_file)  # [h,w,3] uint8
+        image_merged = normalize_uint8(read_image(image_file))  # [h,w,3] uint8
 
         width = tf.shape(image_merged)[1] // 2
 
@@ -84,48 +101,36 @@ class DataLoader(DataLoaderTemplate):
             "test": tf.data.Dataset.list_files(data_path + 'test/*.jpg')
                 .map(self.__read_image)
                 .map(self.__resize)
-                .shuffle(self.config.BUFFER_SIZE)
-                .batch(self.config.BATCH_SIZE, drop_remainder=True)
+                .batch(self.config.TEST_BATCH_SIZE, drop_remainder=True)
             ,
             "val": tf.data.Dataset.list_files(data_path + 'val/*.jpg')
                 .map(self.__read_image)
                 .map(self.__resize)
-                .shuffle(self.config.BUFFER_SIZE)
-                .batch(self.config.BATCH_SIZE, drop_remainder=True)
+                .batch(self.config.TEST_BATCH_SIZE, drop_remainder=True)
             ,
         }
 
 
-class DataLoaderConfigTemplate:
-    # used in __random_jitter
-    RESIZE_UP_SIZE = None  # the resolution will go up to RESIZE_UP_SIZE first
-    OUTPUT_SIZE = None  # randomly cropped to OUTPUT_SIZE
-
-    # dataset config
-    BUFFER_SIZE = None  # random buffer
-    BATCH_SIZE = None
-
-
 if __name__ == "__main__":
-    # config
-    class DataLoaderConfig(DataLoaderConfigTemplate):
-        RESIZE_UP_SIZE = 300
-        OUTPUT_SIZE = 100
+    test_config = DataLoaderConfig(
+        resize_up_size=290,
+        output_size=256,
+        buffer_size=200,
+        batch_size=10,
+        test_batch_size=10
+    )
 
-        BUFFER_SIZE = 10
-        BATCH_SIZE = 5
-
-
-    data = DataLoader(DataLoaderConfig)
+    data = DataLoader(test_config)
     data.load()
     dataset = data.get_dataset()
 
     for x, y in dataset["train"]:
-        quick_view([x[0], y[0]], n=2)
+        quick_view_image_sequence([x[0], y[0]], n=2)
+        print(x[0], y[0])
         break
     for x, y in dataset["test"]:
-        quick_view([x[0], y[0]], n=2)
+        quick_view(x[2])
         break
     for x, y in dataset["val"]:
-        quick_view([x[0], y[0]], n=2)
+        quick_view(x[2])
         break

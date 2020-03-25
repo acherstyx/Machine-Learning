@@ -16,10 +16,18 @@ class TrainerTemplate:
         self.callbacks = []
         self.metrics = []
 
+        # timestamp for log file
         self.timestamp = "{0:%Y-%m-%dT%H-%M-%S/}".format(datetime.now())
+        self.checkpoint = None
 
-    def train(self):
+    def train(self, *args):
         """
         train your model here
         """
         raise NotImplementedError
+
+    def save(self, *args):
+        pass
+
+    def predict(self, *args):
+        pass

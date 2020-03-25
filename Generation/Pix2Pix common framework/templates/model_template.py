@@ -1,3 +1,6 @@
+import tensorflow as tf
+
+
 class ModelTemplate:
     def __init__(self, config):
         """
@@ -38,7 +41,28 @@ class ModelTemplate:
         raise NotImplementedError
 
     def get_model(self):
+        """
+        return self.model
+        :return:
+        """
         if self.model is None:
             raise Exception("[Error] Build the models first.")
 
         return self.model
+
+    def show_summary(self, with_plot=False, dpi=100):
+        """
+        show the summary of self.model
+        :param with_plot: show model in image
+        :param dpi: dpi of chart
+        :return: self
+        """
+        if self.model is None:
+            raise Exception("[Error] Build the models first.")
+        self.model.summary()
+        if with_plot:
+            tf.keras.utils.plot_model(self.model,
+                                      to_file=self.__class__.__name__ + ".png",
+                                      show_shapes=True,
+                                      dpi=dpi)
+        return self
