@@ -163,7 +163,7 @@ class DefaultTrainer(TrainerTemplate):
         plt.show()
 
     def generate_gif(self):
-        generate_gif(self.image_save_path, self.image_save_path + "generate_result.gif")
+        generate_gif(self.image_save_path + "/image_at_epoch_*.png", self.image_save_path + "generate_result.gif")
 
 
 if __name__ == "__main__":

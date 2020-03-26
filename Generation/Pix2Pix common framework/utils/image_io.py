@@ -21,7 +21,7 @@ def read_image(image_file):
 def quick_view_image_sequence(image, n=1):
     """
     show image with matplotlib
-    :param image:
+    :param image: a python list contain `n` iamges
     :param n: the number of image in parameter 'image'
     """
     plt.figure(figsize=(n, 1), dpi=300)
@@ -40,7 +40,7 @@ def quick_view(image):
 def generate_gif(png_image_path, gif_save_path):
     """
     turn all the images in the folder into a gif
-    :param png_image_path: folder contain some image
+    :param png_image_path: the 
     :param gif_save_path: output gif
     """
     file_list = sorted(glob.glob(png_image_path))

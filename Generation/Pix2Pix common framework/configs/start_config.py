@@ -4,10 +4,10 @@ from data_loaders.load_cmp_facade import DataLoaderConfig
 
 trainer_config = DefaultTrainerConfig(
     experiment_name="building_generate",
-    _lambda=100,
+    _lambda=70,
     generator_learning_rate=2e-4,
     discriminator_learning_rate=2e-4,
-    epoch=100,
+    epoch=150,
     log_root="logs",
     save_freq=5,
     predict_dpi=300
