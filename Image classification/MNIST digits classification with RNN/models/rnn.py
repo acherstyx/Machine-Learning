@@ -6,9 +6,11 @@ from templates.model_template import ModelTemplate
 class RowByRowRNNConfig:
     def __init__(self,
                  image_size,
-                 unit_stack):
+                 unit_stack,
+                 dropout_rate):
         self.IMAGE_SIZE = image_size
         self.UNIT_STACK = unit_stack # for example, [64, 128, 512, 1024]
+        self.DROPOUT_RATE = dropout_rate
 
 
 class RowByRowRNN(ModelTemplate):
@@ -30,6 +32,8 @@ class RowByRowRNN(ModelTemplate):
                                   return_sequences=False)(hidden_layer)
         hidden_layer = layers.BatchNormalization()(hidden_layer)
 
+        hidden_layer = layers.Dropout(self.config.DROPOUT_RATE)(hidden_layer)
+
         hidden_layer = layers.Dense(units=1024,
                                     activation="relu")(hidden_layer)
         hidden_layer = layers.BatchNormalization()(hidden_layer)
@@ -48,6 +52,7 @@ class RowByRowRNN(ModelTemplate):
 
 if __name__ == "__main__":
     test_config = RowByRowRNNConfig(image_size=28,
-                                    unit_stack=[64, 128, 512, 1024])
+                                    unit_stack=[64, 128, 512, 1024],
+                                    dropout_rate=0.5)
     model = RowByRowRNN(test_config)
     model.show_summary(True)

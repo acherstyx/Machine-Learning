@@ -2,7 +2,7 @@ import tensorflow as tf
 
 
 class ModelTemplate:
-    def __init__(self, config,  *args):
+    def __init__(self, config, *args):
         """
         init the models
         :param config: configs you want to use in `build` method
@@ -52,7 +52,7 @@ class ModelTemplate:
 
         return self.model
 
-    def show_summary(self, with_plot=False, dpi=100, *args):
+    def show_summary(self, with_plot=False, with_text=True, dpi=100, *args):
         """
         show the summary of self.model
         :param with_plot: show model in image
@@ -61,7 +61,9 @@ class ModelTemplate:
         """
         if self.model is None:
             raise Exception("[Error] Build the models first.")
-        self.model.summary()
+
+        if with_text:
+            self.model.summary()
         if with_plot:
             tf.keras.utils.plot_model(self.model,
                                       to_file=self.__class__.__name__ + ".png",
